@@ -21,13 +21,14 @@ import (
 var workers []*Worker
 
 func main() {
+	threads := flag.Int("threads", runtime.NumCPU(), "threads")
 	flag.Parse()
 	var findString = flag.Args()[0]
 	var outDir = "./"
 
 	results := make(chan SSHKey)
 	lm := LowercaseMatcher{findString}
-	for i := 0; i < runtime.NumCPU(); i++ {
+	for i := 0; i < *threads; i++ {
 		w := &Worker{
 			Count:        0,
 			Matcher:      lm,
