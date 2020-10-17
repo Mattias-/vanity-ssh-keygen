@@ -1,4 +1,4 @@
-module vanity-ssh-keygen
+module github.com/Mattias-/vanity-ssh-keygen
 
 go 1.15
 
