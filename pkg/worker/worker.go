@@ -5,6 +5,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/matcher"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/ssh/key"
 )
@@ -22,18 +23,18 @@ func init() {
 }
 
 type worker struct {
-	count        uint64
-	matcher      matcher.Matcher
-	keyGenerator func() key.SSHKey
+	count   uint64
+	matcher matcher.Matcher
+	keygen  keygen.Keygen
 }
 
 func (w *worker) run(result chan *key.SSHKey) {
-	m := testedTotal.WithLabelValues(w.matcher.Name(), "ed25519")
+	m := testedTotal.WithLabelValues(w.matcher.Name(), w.keygen.Name())
 	var k key.SSHKey
 	for {
 		m.Inc()
 		w.count += 1
-		k = w.keyGenerator()
+		k = w.keygen.New()
 		if w.matcher.Match(&k) {
 			// A result was found!
 			break
@@ -48,12 +49,12 @@ type WorkerPool struct {
 	Results chan *key.SSHKey
 }
 
-func NewWorkerPool(instances int, matcher matcher.Matcher, keygen func() key.SSHKey) *WorkerPool {
+func NewWorkerPool(instances int, matcher matcher.Matcher, kg keygen.Keygen) *WorkerPool {
 	var workers []*worker
 	for i := 0; i < instances; i++ {
 		w := &worker{
-			matcher:      matcher,
-			keyGenerator: keygen,
+			matcher: matcher,
+			keygen:  kg,
 		}
 		workers = append(workers, w)
 	}

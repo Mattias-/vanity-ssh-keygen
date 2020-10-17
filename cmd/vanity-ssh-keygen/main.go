@@ -13,14 +13,16 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/matcher"
-	"github.com/Mattias-/vanity-ssh-keygen/pkg/ssh/ed25519"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/worker"
 )
 
-var configFile string
-
-var matchers map[string]matcher.Matcher
+var (
+	configFile string
+	matchers   map[string]matcher.Matcher
+	keygens    map[string]keygen.Keygen
+)
 
 var rootCmd = &cobra.Command{
 	Use:   "vanity-ssh-keygen [match-string]",
@@ -50,10 +52,15 @@ var rootCmd = &cobra.Command{
 			}()
 		}
 
+		m := matchers[viper.GetString("matcher")]
+		m.SetMatchString(findString)
+
+		kg := keygens[viper.GetString("keyType")]
+
 		wp = worker.NewWorkerPool(
 			viper.GetInt("threads"),
-			matcher.LowercaseMatcher{MatchString: findString},
-			ed25519.New,
+			m,
+			kg,
 		)
 		wp.Start()
 		result := <-wp.Results
@@ -79,7 +86,11 @@ func main() {
 }
 
 func init() {
-	//matchers[matcher.LowercaseMatcher.Name()] = matcher.LowercaseMatcher
+	lm := matcher.NewLowercaseMatcher()
+	matchers[lm.Name()] = lm
+
+	ed25519 := keygen.NewEd25519()
+	keygens[ed25519.Name()] = ed25519
 
 	cobra.OnInitialize(initConfig)
 

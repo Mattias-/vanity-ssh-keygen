@@ -7,15 +7,22 @@ import (
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/ssh/key"
 )
 
-type LowercaseMatcher struct {
-	MatchString string
+type lowercaseMatcher struct {
+	matchString string
 }
 
-func (m LowercaseMatcher) Name() string {
+func NewLowercaseMatcher() *lowercaseMatcher {
+	return &lowercaseMatcher{}
+}
+
+func (m lowercaseMatcher) Name() string {
 	return "lowercase"
 }
+func (m lowercaseMatcher) SetMatchString(matchString string) {
+	m.matchString = matchString
+}
 
-func (m LowercaseMatcher) Match(s *key.SSHKey) bool {
+func (m lowercaseMatcher) Match(s *key.SSHKey) bool {
 	if s == nil {
 		return false
 	}
@@ -24,5 +31,5 @@ func (m LowercaseMatcher) Match(s *key.SSHKey) bool {
 		log.Println(err)
 		return false
 	}
-	return strings.Contains(strings.ToLower(string(pubK)), m.MatchString)
+	return strings.Contains(strings.ToLower(string(pubK)), m.matchString)
 }
