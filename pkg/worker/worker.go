@@ -3,9 +3,23 @@ package worker
 import (
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/matcher"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/ssh/key"
 )
+
+var testedTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "tested_keys_total",
+		Help: "Number of tested keys.",
+	},
+	[]string{"matcher", "keygen"},
+)
+
+func init() {
+	prometheus.MustRegister(testedTotal)
+}
 
 type worker struct {
 	count        uint64
@@ -14,8 +28,10 @@ type worker struct {
 }
 
 func (w *worker) run(result chan *key.SSHKey) {
+	m := testedTotal.WithLabelValues(w.matcher.Name(), "ed25519")
 	var k key.SSHKey
 	for {
+		m.Inc()
 		w.count += 1
 		k = w.keyGenerator()
 		if w.matcher.Match(&k) {

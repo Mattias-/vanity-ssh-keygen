@@ -11,6 +11,10 @@ type LowercaseMatcher struct {
 	MatchString string
 }
 
+func (m LowercaseMatcher) Name() string {
+	return "lowercase"
+}
+
 func (m LowercaseMatcher) Match(s *key.SSHKey) bool {
 	if s == nil {
 		return false
