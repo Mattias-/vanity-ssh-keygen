@@ -15,14 +15,15 @@ func NewLowercaseMatcher() *lowercaseMatcher {
 	return &lowercaseMatcher{}
 }
 
-func (m lowercaseMatcher) Name() string {
+func (m *lowercaseMatcher) Name() string {
 	return "lowercase"
 }
-func (m lowercaseMatcher) SetMatchString(matchString string) {
+
+func (m *lowercaseMatcher) SetMatchString(matchString string) {
 	m.matchString = matchString
 }
 
-func (m lowercaseMatcher) Match(s *key.SSHKey) bool {
+func (m *lowercaseMatcher) Match(s *key.SSHKey) bool {
 	if s == nil {
 		return false
 	}

@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"time"
 
+	_ "net/http/pprof"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -20,8 +22,8 @@ import (
 
 var (
 	configFile string
-	matchers   map[string]matcher.Matcher
-	keygens    map[string]keygen.Keygen
+	matchers   = make(map[string]matcher.Matcher)
+	keygens    = make(map[string]keygen.Keygen)
 )
 
 var rootCmd = &cobra.Command{
