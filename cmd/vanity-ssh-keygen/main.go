@@ -86,7 +86,7 @@ func main() {
 }
 
 func init() {
-	lm := matcher.NewLowercaseMatcher()
+	lm := matcher.NewIgnorecaseMatcher()
 	matchers[lm.Name()] = lm
 
 	ed25519 := keygen.NewEd25519()
@@ -105,7 +105,7 @@ func init() {
 	rootCmd.Flags().IntP("threads", "j", runtime.NumCPU(), "Execution threads. Defaults to the number of logical CPU cores")
 	_ = viper.BindPFlag("threads", rootCmd.Flags().Lookup("threads"))
 
-	rootCmd.Flags().String("matcher", "lowercase", "Matcher used to find a vanity SSH key")
+	rootCmd.Flags().String("matcher", "ignorecase", "Matcher used to find a vanity SSH key")
 	_ = viper.BindPFlag("matcher", rootCmd.Flags().Lookup("matcher"))
 
 	rootCmd.Flags().StringP("key-type", "t", "ed25519", "Key type to generate")

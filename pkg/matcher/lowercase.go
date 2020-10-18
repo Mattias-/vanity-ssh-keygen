@@ -7,26 +7,26 @@ import (
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/ssh/key"
 )
 
-type lowercaseMatcher struct {
+type ignorecaseMatcher struct {
 	name        string
 	matchString string
 }
 
-func NewLowercaseMatcher() *lowercaseMatcher {
-	return &lowercaseMatcher{
-		name: "lowercase",
+func NewIgnorecaseMatcher() *ignorecaseMatcher {
+	return &ignorecaseMatcher{
+		name: "ignorecase",
 	}
 }
 
-func (m *lowercaseMatcher) Name() string {
+func (m *ignorecaseMatcher) Name() string {
 	return m.name
 }
 
-func (m *lowercaseMatcher) SetMatchString(matchString string) {
+func (m *ignorecaseMatcher) SetMatchString(matchString string) {
 	m.matchString = matchString
 }
 
-func (m *lowercaseMatcher) Match(s *key.SSHKey) bool {
+func (m *ignorecaseMatcher) Match(s *key.SSHKey) bool {
 	if s == nil {
 		return false
 	}
