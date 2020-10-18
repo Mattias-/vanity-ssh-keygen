@@ -69,14 +69,12 @@ var rootCmd = &cobra.Command{
 
 		printStats(wp)
 
-		pubK, _ := (*result).SSHPubkey()
 		privK, _ := (*result).SSHPrivkey()
-
-		log.Println("Found pubkey:")
-		log.Print(string(pubK))
-
 		_ = ioutil.WriteFile(outDir+findString, privK, 0600)
+		pubK, _ := (*result).SSHPubkey()
 		_ = ioutil.WriteFile(outDir+findString+".pub", pubK, 0644)
+		log.Print("Found pubkey: ", string(pubK))
+
 	},
 }
 
@@ -116,7 +114,6 @@ func init() {
 	viper.SetDefault("logStats", true)
 	viper.SetDefault("metricServer", false)
 	viper.SetDefault("metricsListen", ":9090")
-
 }
 
 func initConfig() {
