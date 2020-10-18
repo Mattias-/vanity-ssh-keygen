@@ -94,6 +94,12 @@ func init() {
 	ed25519 := keygen.NewEd25519()
 	keygens[ed25519.Name()] = ed25519
 
+	rsa2048 := keygen.NewRsa(2048)
+	keygens[rsa2048.Name()] = rsa2048
+
+	rsa4096 := keygen.NewRsa(4096)
+	keygens[rsa4096.Name()] = rsa4096
+
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.Flags().StringVar(&configFile, "config", "", "Config file")

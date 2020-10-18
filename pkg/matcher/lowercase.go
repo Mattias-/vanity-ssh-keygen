@@ -8,15 +8,18 @@ import (
 )
 
 type lowercaseMatcher struct {
+	name        string
 	matchString string
 }
 
 func NewLowercaseMatcher() *lowercaseMatcher {
-	return &lowercaseMatcher{}
+	return &lowercaseMatcher{
+		name: "lowercase",
+	}
 }
 
 func (m *lowercaseMatcher) Name() string {
-	return "lowercase"
+	return m.name
 }
 
 func (m *lowercaseMatcher) SetMatchString(matchString string) {
