@@ -113,7 +113,7 @@ func init() {
 
 	viper.SetDefault("logStats", true)
 	viper.SetDefault("metricServer", false)
-	viper.SetDefault("metricsListen", ":9090")
+	viper.SetDefault("metricsListen", ":9101")
 }
 
 func initConfig() {
