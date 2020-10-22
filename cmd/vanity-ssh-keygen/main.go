@@ -21,6 +21,9 @@ import (
 )
 
 var (
+	version    = "dev"
+	commit     = "none"
+	date       = "unknown"
 	configFile string
 	matchers   = make(map[string]matcher.Matcher)
 	keygens    = make(map[string]keygen.Keygen)
@@ -28,7 +31,7 @@ var (
 
 var rootCmd = &cobra.Command{
 	Use:   "vanity-ssh-keygen [match-string]",
-	Short: "Generate a vanity SSH key that matches specified condition",
+	Short: "Generate a vanity SSH key that matches the input argument",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(viper.AllSettings())
@@ -117,6 +120,9 @@ func init() {
 	viper.SetDefault("logStats", true)
 	viper.SetDefault("metricServer", false)
 	viper.SetDefault("metricsListen", ":9101")
+
+	rootCmd.Version = version
+	rootCmd.SetVersionTemplate(fmt.Sprintf("%s %s %s", version, commit, date))
 }
 
 func initConfig() {
