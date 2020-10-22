@@ -89,6 +89,9 @@ func init() {
 	lm := matcher.NewIgnorecaseMatcher()
 	matchers[lm.Name()] = lm
 
+	lmEd25519 := matcher.NewIgnorecaseEd25519Matcher()
+	matchers[lmEd25519.Name()] = lmEd25519
+
 	ed25519 := keygen.NewEd25519()
 	keygens[ed25519.Name()] = ed25519
 
