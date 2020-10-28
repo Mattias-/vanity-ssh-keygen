@@ -25,16 +25,12 @@ func New() key.SSHKey {
 	return ed{publicKey, privateKey}
 }
 
-func (s ed) SSHPubkey() ([]byte, error) {
-	publicRsaKey, err := ssh.NewPublicKey(s.publicKey)
-	if err != nil {
-		return nil, err
-	}
-	pubKeyBytes := ssh.MarshalAuthorizedKey(publicRsaKey)
-	return pubKeyBytes, nil
+func (s ed) SSHPubkey() []byte {
+	publicKey, _ := ssh.NewPublicKey(s.publicKey)
+	return ssh.MarshalAuthorizedKey(publicKey)
 }
 
-func (s ed) SSHPrivkey() ([]byte, error) {
+func (s ed) SSHPrivkey() []byte {
 	privDER := edkey.MarshalED25519PrivateKey(s.privateKey)
 	b := pem.Block{
 		Type:    "OPENSSH PRIVATE KEY",
@@ -43,5 +39,5 @@ func (s ed) SSHPrivkey() ([]byte, error) {
 	}
 	// Private key in PEM format
 	privatePEM := pem.EncodeToMemory(&b)
-	return privatePEM, nil
+	return privatePEM
 }

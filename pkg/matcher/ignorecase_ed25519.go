@@ -1,7 +1,6 @@
 package matcher
 
 import (
-	"log"
 	"strings"
 
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/ssh/key"
@@ -27,13 +26,6 @@ func (m *ignorecaseEd25519Matcher) SetMatchString(matchString string) {
 }
 
 func (m *ignorecaseEd25519Matcher) Match(s *key.SSHKey) bool {
-	if s == nil {
-		return false
-	}
-	pubK, err := (*s).SSHPubkey()
-	if err != nil {
-		log.Println(err)
-		return false
-	}
+	pubK := (*s).SSHPubkey()
 	return strings.Contains(strings.ToLower(string(pubK[:37])), m.matchString)
 }

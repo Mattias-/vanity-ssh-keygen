@@ -17,23 +17,16 @@ type localRsa struct {
 }
 
 func New(bitSize int) key.SSHKey {
-	privateKey, err := rsa.GenerateKey(rand.Reader, bitSize)
-	if err != nil {
-		panic(err)
-	}
+	privateKey, _ := rsa.GenerateKey(rand.Reader, bitSize)
 	return localRsa{privateKey.PublicKey, *privateKey}
 }
 
-func (s localRsa) SSHPubkey() ([]byte, error) {
-	publicRsaKey, err := ssh.NewPublicKey(&s.publicKey)
-	if err != nil {
-		return nil, err
-	}
-	pubKeyBytes := ssh.MarshalAuthorizedKey(publicRsaKey)
-	return pubKeyBytes, nil
+func (s localRsa) SSHPubkey() []byte {
+	publicKey, _ := ssh.NewPublicKey(&s.publicKey)
+	return ssh.MarshalAuthorizedKey(publicKey)
 }
 
-func (s localRsa) SSHPrivkey() ([]byte, error) {
+func (s localRsa) SSHPrivkey() []byte {
 	privDER := x509.MarshalPKCS1PrivateKey(&s.privateKey)
 	privBlock := pem.Block{
 		Type:    "RSA PRIVATE KEY",
@@ -42,5 +35,5 @@ func (s localRsa) SSHPrivkey() ([]byte, error) {
 	}
 	// Private key in PEM format
 	privatePEM := pem.EncodeToMemory(&privBlock)
-	return privatePEM, nil
+	return privatePEM
 }

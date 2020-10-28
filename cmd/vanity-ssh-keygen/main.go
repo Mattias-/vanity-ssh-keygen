@@ -6,10 +6,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"runtime"
+	"runtime/pprof"
+	"syscall"
 	"time"
-
-	_ "net/http/pprof"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
@@ -34,55 +35,80 @@ var rootCmd = &cobra.Command{
 	Short: "Generate a vanity SSH key that matches the input argument",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(viper.AllSettings())
-		var findString = args[0]
-		var outDir = "./"
-
-		var wp *worker.WorkerPool
-
-		if viper.GetBool("metricServer") {
-			go func() {
-				http.Handle("/metrics", promhttp.Handler())
-				log.Fatal(http.ListenAndServe(viper.GetString("metricsListen"), nil))
-			}()
-		}
-
-		if viper.GetBool("logStats") {
-			ticker := time.NewTicker(time.Second * 2)
-			defer ticker.Stop()
-			go func() {
-				for range ticker.C {
-					printStats(wp)
-				}
-			}()
-		}
-
-		m := matchers[viper.GetString("matcher")]
-		m.SetMatchString(findString)
-
-		kg := keygens[viper.GetString("keyType")]
-
-		wp = worker.NewWorkerPool(
-			viper.GetInt("threads"),
-			m,
-			kg,
-		)
-		wp.Start()
-		result := <-wp.Results
-
-		printStats(wp)
-
-		privK, _ := (*result).SSHPrivkey()
-		_ = ioutil.WriteFile(outDir+findString, privK, 0600)
-		pubK, _ := (*result).SSHPubkey()
-		_ = ioutil.WriteFile(outDir+findString+".pub", pubK, 0644)
-		log.Print("Found pubkey: ", string(pubK))
-
+		runKeygen(args[0])
 	},
+}
+
+func runKeygen(findString string) {
+	fmt.Println(viper.AllSettings())
+	var outDir = "./"
+
+	var wp *worker.WorkerPool
+
+	if viper.GetBool("metricServer") {
+		go func() {
+			http.Handle("/metrics", promhttp.Handler())
+			log.Fatal(http.ListenAndServe(viper.GetString("metricsListen"), nil))
+		}()
+	}
+
+	logStatsInterval := viper.GetInt64("logStatsInterval")
+	if logStatsInterval != 0 {
+		ticker := time.NewTicker(time.Second * time.Duration(logStatsInterval))
+		defer ticker.Stop()
+		go func() {
+			for range ticker.C {
+				printStats(wp)
+			}
+		}()
+	}
+
+	if viper.GetBool("profile") {
+		f, err := os.Create("./pprof")
+		if err != nil {
+			log.Fatal("Could not create CPU profile: ", err)
+		}
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("Could not start CPU profile: ", err)
+		}
+		defer pprof.StopCPUProfile()
+		// listening OS shutdown singal
+		signalChan := make(chan os.Signal, 1)
+		signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+		go func() {
+			<-signalChan
+			log.Printf("Got shutdown signal.")
+			pprof.StopCPUProfile()
+			os.Exit(1)
+		}()
+	}
+
+	m := matchers[viper.GetString("matcher")]
+	m.SetMatchString(findString)
+
+	kg := keygens[viper.GetString("keyType")]
+
+	wp = worker.NewWorkerPool(
+		viper.GetInt("threads"),
+		m,
+		kg,
+	)
+	wp.Start()
+	result := <-wp.Results
+
+	printStats(wp)
+
+	privK := (*result).SSHPrivkey()
+	_ = ioutil.WriteFile(outDir+findString, privK, 0600)
+	pubK := (*result).SSHPubkey()
+	_ = ioutil.WriteFile(outDir+findString+".pub", pubK, 0644)
+	log.Print("Found pubkey: ", string(pubK))
+
 }
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
+		pprof.StopCPUProfile()
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -117,7 +143,10 @@ func init() {
 	rootCmd.Flags().StringP("key-type", "t", "ed25519", "Key type to generate")
 	_ = viper.BindPFlag("keyType", rootCmd.Flags().Lookup("key-type"))
 
-	viper.SetDefault("logStats", true)
+	rootCmd.Flags().Bool("profile", false, "Write pprof CPU profile to ./pprof")
+	_ = viper.BindPFlag("profile", rootCmd.Flags().Lookup("profile"))
+
+	viper.SetDefault("logStatsInterval", 2)
 	viper.SetDefault("metricServer", false)
 	viper.SetDefault("metricsListen", ":9101")
 
