@@ -1567,42 +1567,6 @@ serverFiles:
             regex: Pending|Succeeded|Failed
             action: drop
 
-# adds additional scrape configs to prometheus.yml
-# must be a string so you have to add a | after extraScrapeConfigs:
-# example adds prometheus-blackbox-exporter scrape config
-extraScrapeConfigs: |
-  - job_name: node
-    scrape_interval: 10s
-    static_configs:
-      - targets:
-        - 54.78.20.142:9100
-        - 176.34.144.144:9100
-        - 54.154.210.34:9100
-
-  - job_name: keygen
-    scrape_interval: 10s
-    static_configs:
-      - targets:
-        - 54.78.20.142:9090
-        - 176.34.144.144:9090
-        - 54.154.210.34:9090
-
-
-  # - job_name: 'prometheus-blackbox-exporter'
-  #   metrics_path: /probe
-  #   params:
-  #     module: [http_2xx]
-  #   static_configs:
-  #     - targets:
-  #       - https://example.com
-  #   relabel_configs:
-  #     - source_labels: [__address__]
-  #       target_label: __param_target
-  #     - source_labels: [__param_target]
-  #       target_label: instance
-  #     - target_label: __address__
-  #       replacement: prometheus-blackbox-exporter:9115
-
 # Adds option to add alert_relabel_configs to avoid duplicate alerts in alertmanager
 # useful in H/A prometheus with different external labels but the same alerts
 alertRelabelConfigs:
@@ -1618,4 +1582,30 @@ networkPolicy:
 
 # Force namespace of namespaced resources
 forceNamespace: null
+
+# adds additional scrape configs to prometheus.yml
+# must be a string so you have to add a | after extraScrapeConfigs:
+# example adds prometheus-blackbox-exporter scrape config
+extraScrapeConfigs: |
+  - job_name: node
+    scrape_interval: 10s
+    static_configs:
+      - targets:
+        - 34.247.34.236:9100 # i-0f02399be83ffbf93
+        - 3.250.81.102:9100 # i-0d9bb9bac2f699cda
+        - 54.229.52.246:9100 # i-0a3cf00853622f5e3
+        - 34.246.163.125:9100 # i-0be23d78f9161605b
+        - 34.247.191.6:9100 # i-041934ead072aa1ca
+        - 3.248.195.146:9100 # i-02dbb19d4d210c606
+
+  - job_name: keygen
+    scrape_interval: 10s
+    static_configs:
+      - targets:
+        - 34.247.34.236:9101 # i-0f02399be83ffbf93
+        - 3.250.81.102:9101 # i-0d9bb9bac2f699cda
+        - 54.229.52.246:9101 # i-0a3cf00853622f5e3
+        - 34.246.163.125:9101 # i-0be23d78f9161605b
+        - 34.247.191.6:9101 # i-041934ead072aa1ca
+        - 3.248.195.146:9101 # i-02dbb19d4d210c606
 

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 aws ec2 describe-instances \
-    --output text \
+    --output json \
     --filters "Name=instance-state-name,Values=running" \
-    --query 'Reservations[*].Instances[*].{InstanceId: InstanceId, State: State.Name, IP: PublicIpAddress}'
+    --query 'Reservations[].Instances[].{InstanceId: InstanceId, State: State.Name, IP: PublicIpAddress}' |
+    jq -r '.[] | "- \(.IP):9100 # \(.InstanceId)"'

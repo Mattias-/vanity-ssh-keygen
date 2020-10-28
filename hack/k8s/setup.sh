@@ -1,22 +1,26 @@
 #!/bin/bash
 set -euo pipefail
 
-helm repo add \
-    prometheus-community \
-    https://prometheus-community.github.io/helm-charts
+add_repos() {
+    helm repo add \
+        prometheus-community \
+        https://prometheus-community.github.io/helm-charts
 
-helm repo add \
-    grafana \
-    https://grafana.github.io/helm-charts
+    helm repo add \
+        grafana \
+        https://grafana.github.io/helm-charts
 
-helm repo update
+    helm repo update
+}
 
-helm install \
+add_repos
+
+helm upgrade \
     prometheus \
     prometheus-community/prometheus \
     --values ./prometheus-values.yaml
 
-helm install \
+helm upgrade \
     grafana \
     grafana/grafana \
     --values ./grafana-values.yaml
