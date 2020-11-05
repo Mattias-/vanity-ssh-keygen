@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -39,9 +40,19 @@ var rootCmd = &cobra.Command{
 	},
 }
 
+type Metadata struct {
+	FindString string `json:"findstring"`
+	Time       int64  `json:"time"`
+}
+
+type OutputData struct {
+	PublicKey  string   `json:"public_key"`
+	PrivateKey string   `json:"private_key"`
+	Metadata   Metadata `json:"metadata"`
+}
+
 func runKeygen(findString string) {
 	fmt.Println(viper.AllSettings())
-	var outDir = "./"
 
 	var wp *worker.WorkerPool
 
@@ -99,11 +110,27 @@ func runKeygen(findString string) {
 	printStats(wp)
 
 	privK := (*result).SSHPrivkey()
-	_ = ioutil.WriteFile(outDir+findString, privK, 0600)
 	pubK := (*result).SSHPubkey()
-	_ = ioutil.WriteFile(outDir+findString+".pub", pubK, 0644)
 	log.Print("Found pubkey: ", string(pubK))
 
+	outDir := viper.GetString("outputDirectory")
+	output := viper.GetString("output")
+	if output == "pem-files" {
+		_ = ioutil.WriteFile(outDir+findString, privK, 0600)
+		_ = ioutil.WriteFile(outDir+findString+".pub", pubK, 0644)
+		log.Printf("Keypair written to: %[1]s and %[1]s.pub", outDir+findString)
+	} else if output == "json-file" {
+		file, _ := json.MarshalIndent(OutputData{
+			PublicKey:  string(pubK),
+			PrivateKey: string(privK),
+			Metadata: Metadata{
+				FindString: findString,
+				Time:       int64(wp.GetStats().Elapsed / time.Second),
+			},
+		}, "", " ")
+		_ = ioutil.WriteFile(outDir+"result.json", file, 0600)
+		log.Printf("Result written to: %s", outDir+"result.json")
+	}
 }
 
 func main() {
@@ -145,6 +172,12 @@ func init() {
 
 	rootCmd.Flags().Bool("profile", false, "Write pprof CPU profile to ./pprof")
 	_ = viper.BindPFlag("profile", rootCmd.Flags().Lookup("profile"))
+
+	rootCmd.Flags().StringP("output", "o", "pem-files", "Output format.")
+	_ = viper.BindPFlag("output", rootCmd.Flags().Lookup("output"))
+
+	rootCmd.Flags().String("output-dir", "./", "Output directory.")
+	_ = viper.BindPFlag("outputDirectory", rootCmd.Flags().Lookup("output-dir"))
 
 	viper.SetDefault("logStatsInterval", 2)
 	viper.SetDefault("metricServer", false)
