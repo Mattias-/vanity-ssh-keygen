@@ -6,6 +6,8 @@ add_repos() {
         prometheus-community \
         https://prometheus-community.github.io/helm-charts
 
+    helm repo add kube-state-metrics https://kubernetes.github.io/kube-state-metrics
+
     helm repo add \
         grafana \
         https://grafana.github.io/helm-charts
@@ -15,12 +17,12 @@ add_repos() {
 
 add_repos
 
-helm upgrade \
+helm upgrade --install \
     prometheus \
     prometheus-community/prometheus \
     --values ./prometheus-values.yaml
 
-helm upgrade \
+helm upgrade --install \
     grafana \
     grafana/grafana \
     --values ./grafana-values.yaml
