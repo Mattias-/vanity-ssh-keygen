@@ -173,7 +173,7 @@ func init() {
 	rootCmd.Flags().Bool("profile", false, "Write pprof CPU profile to ./pprof")
 	_ = viper.BindPFlag("profile", rootCmd.Flags().Lookup("profile"))
 
-	rootCmd.Flags().StringP("output", "o", "pem-files", "Output format.")
+	rootCmd.Flags().StringP("output", "o", "pem-files", "Output format. One of: pem-files|json-file.")
 	_ = viper.BindPFlag("output", rootCmd.Flags().Lookup("output"))
 
 	rootCmd.Flags().String("output-dir", "./", "Output directory.")
