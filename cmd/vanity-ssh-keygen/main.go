@@ -56,10 +56,10 @@ func runKeygen(findString string) {
 
 	var wp *worker.WorkerPool
 
-	if viper.GetBool("metricServer") {
+	if viper.GetBool("enableMetrics") {
 		go func() {
 			http.Handle("/metrics", promhttp.Handler())
-			log.Fatal(http.ListenAndServe(viper.GetString("metricsListen"), nil))
+			log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", viper.GetInt("metricsPort")), nil))
 		}()
 	}
 
@@ -179,9 +179,13 @@ func init() {
 	rootCmd.Flags().String("output-dir", "./", "Output directory.")
 	_ = viper.BindPFlag("outputDirectory", rootCmd.Flags().Lookup("output-dir"))
 
+	rootCmd.Flags().Bool("enable-metrics", true, "Enable metrics server.")
+	_ = viper.BindPFlag("enableMetrics", rootCmd.Flags().Lookup("enable-metrics"))
+
+	rootCmd.Flags().Int("metrics-port", 9101, "Listening port for metrics server.")
+	_ = viper.BindPFlag("metricsPort", rootCmd.Flags().Lookup("metrics-port"))
+
 	viper.SetDefault("logStatsInterval", 2)
-	viper.SetDefault("metricServer", false)
-	viper.SetDefault("metricsListen", ":9101")
 
 	rootCmd.Version = version
 	rootCmd.SetVersionTemplate(fmt.Sprintf("%s %s %s", version, commit, date))
