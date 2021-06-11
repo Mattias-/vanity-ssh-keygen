@@ -1,6 +1,6 @@
 module github.com/Mattias-/vanity-ssh-keygen
 
-go 1.16
+go 1.17
 
 require (
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
