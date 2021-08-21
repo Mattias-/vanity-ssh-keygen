@@ -1,4 +1,4 @@
-FROM golang:1.17beta1 as builder
+FROM golang:1.17 as builder
 
 WORKDIR /src
 COPY ./ /src
