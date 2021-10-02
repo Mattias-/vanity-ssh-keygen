@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -10,12 +11,12 @@ import (
 	"os/signal"
 	"runtime"
 	"runtime/pprof"
+	"strings"
 	"syscall"
 	"time"
 
+	"github.com/alecthomas/kong"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/matcher"
@@ -23,22 +24,10 @@ import (
 )
 
 var (
-	version    = "dev"
-	commit     = "none"
-	date       = "unknown"
-	configFile string
-	matchers   = make(map[string]matcher.Matcher)
-	keygens    = make(map[string]keygen.Keygen)
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
 )
-
-var rootCmd = &cobra.Command{
-	Use:   "vanity-ssh-keygen [match-string]",
-	Short: "Generate a vanity SSH key that matches the input argument",
-	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		runKeygen(args[0])
-	},
-}
 
 type Metadata struct {
 	FindString string `json:"findstring"`
@@ -51,21 +40,32 @@ type OutputData struct {
 	Metadata   Metadata `json:"metadata"`
 }
 
-func runKeygen(findString string) {
-	fmt.Println(viper.AllSettings())
+type cli struct {
+	Version          kong.VersionFlag `help:"Print version and exit"`
+	MatchString      string           `arg:""`
+	Matcher          string           `help:"Matcher used to find a vanity SSH key. One of: ${matchers}" default:"${default_matcher}" enum:"${matchers}"`
+	KeyType          string           `short:"t" help:"Key type to generate. One of: ${keytypes}" enum:"${keytypes}" default:"${default_keytype}"`
+	Threads          int              `short:"j" help:"Execution threads. Defaults to the number of logical CPU cores" default:"${default_threads}"`
+	Profile          bool             `help:"Profile the process. Write pprof CPU profile to ./pprof" default:"false"`
+	Metrics          bool             `help:"Enable metrics server." default:"true" negatable:""`
+	MetricsPort      int              `help:"Listening port for metrics server." default:"9101"`
+	Output           string           `short:"o" help:"Output format. One of: pem-files|json-file." default:"pem-files"`
+	OutputDir        string           `help:"Output directory." default:"./" type:"existingdir"`
+	StatsLogInterval time.Duration    `help:"Statistics will be printed at this interval, set to 0 to disable" default:"2s"`
+}
 
+func runKeygen(c cli, matcher matcher.Matcher, kg keygen.Keygen) {
 	var wp *worker.WorkerPool
 
-	if viper.GetBool("enableMetrics") {
+	if c.Metrics {
 		go func() {
 			http.Handle("/metrics", promhttp.Handler())
-			log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", viper.GetInt("metricsPort")), nil))
+			log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", c.MetricsPort), nil))
 		}()
 	}
 
-	logStatsInterval := viper.GetInt64("logStatsInterval")
-	if logStatsInterval != 0 {
-		ticker := time.NewTicker(time.Second * time.Duration(logStatsInterval))
+	if c.StatsLogInterval != 0 {
+		ticker := time.NewTicker(c.StatsLogInterval)
 		defer ticker.Stop()
 		go func() {
 			for range ticker.C {
@@ -74,7 +74,7 @@ func runKeygen(findString string) {
 		}()
 	}
 
-	if viper.GetBool("profile") {
+	if c.Profile {
 		f, err := os.Create("./pprof")
 		if err != nil {
 			log.Fatal("Could not create CPU profile: ", err)
@@ -94,14 +94,9 @@ func runKeygen(findString string) {
 		}()
 	}
 
-	m := matchers[viper.GetString("matcher")]
-	m.SetMatchString(findString)
-
-	kg := keygens[viper.GetString("keyType")]
-
 	wp = worker.NewWorkerPool(
-		viper.GetInt("threads"),
-		m,
+		c.Threads,
+		matcher,
 		kg,
 	)
 	wp.Start()
@@ -113,18 +108,17 @@ func runKeygen(findString string) {
 	pubK := (*result).SSHPubkey()
 	log.Print("Found pubkey: ", string(pubK))
 
-	outDir := viper.GetString("outputDirectory")
-	output := viper.GetString("output")
-	if output == "pem-files" {
-		_ = ioutil.WriteFile(outDir+findString, privK, 0600)
-		_ = ioutil.WriteFile(outDir+findString+".pub", pubK, 0644)
-		log.Printf("Keypair written to: %[1]s and %[1]s.pub", outDir+findString)
-	} else if output == "json-file" {
+	outDir := c.OutputDir + "/"
+	if c.Output == "pem-files" {
+		_ = ioutil.WriteFile(outDir+c.MatchString, privK, 0600)
+		_ = ioutil.WriteFile(outDir+c.MatchString+".pub", pubK, 0644)
+		log.Printf("Keypair written to: %[1]s and %[1]s.pub", outDir+c.MatchString)
+	} else if c.Output == "json-file" {
 		file, _ := json.MarshalIndent(OutputData{
 			PublicKey:  string(pubK),
 			PrivateKey: string(privK),
 			Metadata: Metadata{
-				FindString: findString,
+				FindString: c.MatchString,
 				Time:       int64(wp.GetStats().Elapsed / time.Second),
 			},
 		}, "", " ")
@@ -133,77 +127,86 @@ func runKeygen(findString string) {
 	}
 }
 
+type KeygenList struct {
+	keygens []keygen.Keygen
+}
+
+func (kl *KeygenList) Names() []string {
+	var kgs2 []string
+	for _, kg := range kl.keygens {
+		kgs2 = append(kgs2, kg.Name())
+	}
+	return kgs2
+}
+
+func (kl *KeygenList) Get(name string) (*keygen.Keygen, error) {
+	for _, kg := range kl.keygens {
+		if name == kg.Name() {
+			return &kg, nil
+		}
+	}
+	return nil, errors.New("Unknown keytype")
+}
+
+type MatcherList struct {
+	matchers []matcher.Matcher
+}
+
+func (ml *MatcherList) Names() []string {
+	var ms []string
+	for _, m := range ml.matchers {
+		ms = append(ms, m.Name())
+	}
+	return ms
+}
+
+func (ml *MatcherList) Get(name string) (*matcher.Matcher, error) {
+	for _, m := range ml.matchers {
+		if name == m.Name() {
+			return &m, nil
+		}
+	}
+	return nil, errors.New("Unknown keytype")
+}
+
 func main() {
-	if err := rootCmd.Execute(); err != nil {
-		pprof.StopCPUProfile()
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-}
-
-func init() {
-	lm := matcher.NewIgnorecaseMatcher()
-	matchers[lm.Name()] = lm
-
-	lmEd25519 := matcher.NewIgnorecaseEd25519Matcher()
-	matchers[lmEd25519.Name()] = lmEd25519
-
-	ed25519 := keygen.NewEd25519()
-	keygens[ed25519.Name()] = ed25519
-
-	rsa2048 := keygen.NewRsa(2048)
-	keygens[rsa2048.Name()] = rsa2048
-
-	rsa4096 := keygen.NewRsa(4096)
-	keygens[rsa4096.Name()] = rsa4096
-
-	cobra.OnInitialize(initConfig)
-
-	rootCmd.Flags().StringVar(&configFile, "config", "", "Config file")
-
-	rootCmd.Flags().IntP("threads", "j", runtime.NumCPU(), "Execution threads. Defaults to the number of logical CPU cores")
-	_ = viper.BindPFlag("threads", rootCmd.Flags().Lookup("threads"))
-
-	rootCmd.Flags().String("matcher", "ignorecase", "Matcher used to find a vanity SSH key")
-	_ = viper.BindPFlag("matcher", rootCmd.Flags().Lookup("matcher"))
-
-	rootCmd.Flags().StringP("key-type", "t", "ed25519", "Key type to generate")
-	_ = viper.BindPFlag("keyType", rootCmd.Flags().Lookup("key-type"))
-
-	rootCmd.Flags().Bool("profile", false, "Write pprof CPU profile to ./pprof")
-	_ = viper.BindPFlag("profile", rootCmd.Flags().Lookup("profile"))
-
-	rootCmd.Flags().StringP("output", "o", "pem-files", "Output format. One of: pem-files|json-file.")
-	_ = viper.BindPFlag("output", rootCmd.Flags().Lookup("output"))
-
-	rootCmd.Flags().String("output-dir", "./", "Output directory.")
-	_ = viper.BindPFlag("outputDirectory", rootCmd.Flags().Lookup("output-dir"))
-
-	rootCmd.Flags().Bool("enable-metrics", true, "Enable metrics server.")
-	_ = viper.BindPFlag("enableMetrics", rootCmd.Flags().Lookup("enable-metrics"))
-
-	rootCmd.Flags().Int("metrics-port", 9101, "Listening port for metrics server.")
-	_ = viper.BindPFlag("metricsPort", rootCmd.Flags().Lookup("metrics-port"))
-
-	viper.SetDefault("logStatsInterval", 2)
-
-	rootCmd.Version = version
-	rootCmd.SetVersionTemplate(fmt.Sprintf("%s %s %s", version, commit, date))
-}
-
-func initConfig() {
-	if configFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(configFile)
+	ml := MatcherList{
+		[]matcher.Matcher{
+			matcher.NewIgnorecaseMatcher(),
+			matcher.NewIgnorecaseEd25519Matcher(),
+		},
 	}
 
-	viper.SetEnvPrefix("vskg")
-	viper.AutomaticEnv() // read in environment variables that match
-
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	kl := KeygenList{
+		[]keygen.Keygen{
+			keygen.NewEd25519(),
+			keygen.NewRsa(2048),
+			keygen.NewRsa(4096),
+		},
 	}
+
+	c := cli{}
+	ctx := kong.Parse(&c, kong.Vars{
+		"version":         fmt.Sprintf("%s commit:%s date:%s goVersion:%s platform:%s/%s", version, commit, date, runtime.Version(), runtime.GOOS, runtime.GOARCH),
+		"default_threads": fmt.Sprintf("%d", runtime.NumCPU()),
+		"keytypes":        strings.Join(kl.Names(), ","),
+		"default_keytype": kl.Names()[0],
+		"matchers":        strings.Join(ml.Names(), ","),
+		"default_matcher": ml.Names()[0],
+	})
+
+	m, err := ml.Get(c.Matcher)
+	if err != nil {
+		log.Fatal("Invalid key type: ", err)
+	}
+	(*m).SetMatchString(c.MatchString)
+
+	k, err := kl.Get(c.KeyType)
+	if err != nil {
+		log.Fatal("Invalid key type: ", err)
+	}
+	runKeygen(c, *m, *k)
+	ctx.Exit(0)
 }
 
 func printStats(wp *worker.WorkerPool) {
