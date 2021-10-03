@@ -40,17 +40,33 @@ changelog:
     - '^test:'
     - '^hack:'
 
-#dockers:
-#- image_templates:
-#  #- "{{.ProjectName}}:latest"
-#  - "{{.ProjectName}}:{{ .Version }}-amd64"
-#  skip_push: true
-#  dockerfile: goreleaser.Dockerfile
-#  use_buildx: true
-#  build_flag_templates:
-#  - --pull
-#  - --platform=linux/amd64
-#  - --label=org.opencontainers.image.created={{.Date}}
-#  - --label=org.opencontainers.image.title={{.ProjectName}}
-#  - --label=org.opencontainers.image.revision={{.FullCommit}}
-#  - --label=org.opencontainers.image.version={{.Version}}
+dockers:
+- image_templates:
+  #- "{{.ProjectName}}:latest"
+  - "{{ .ProjectName }}:{{ .Version }}-amd64"
+  skip_push: true
+  dockerfile: goreleaser.Dockerfile
+  use: buildx
+  build_flag_templates:
+  - --pull
+  - --platform=linux/amd64
+  - --label=org.opencontainers.image.created={{.Date}}
+  - --label=org.opencontainers.image.title={{.ProjectName}}
+  - --label=org.opencontainers.image.revision={{.FullCommit}}
+  - --label=org.opencontainers.image.version={{.Version}}
+- image_templates:
+  - "{{.ProjectName}}:{{ .Version }}-arm64v8"
+  skip_push: true
+  dockerfile: goreleaser.Dockerfile
+  use: buildx
+  goarch: arm64
+  build_flag_templates:
+  - --pull
+  - --platform=linux/arm64/v8
+
+docker_manifests:
+- name_template: "{{ .ProjectName }}:{{ .Version }}"
+  skip_push: true
+  image_templates:
+  - "{{ .ProjectName }}:{{ .Version }}-amd64"
+  - "{{ .ProjectName }}:{{ .Version }}-arm64v8"
