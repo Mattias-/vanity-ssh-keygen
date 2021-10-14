@@ -30,11 +30,11 @@ type worker struct {
 
 func (w *worker) run(result chan *key.SSHKey) {
 	m := testedTotal.WithLabelValues(w.matcher.Name(), w.keygen.Name())
-	var k key.SSHKey
+	k := w.keygen.New()
 	for {
 		m.Inc()
 		w.count += 1
-		k = w.keygen.New()
+		k.New()
 		if w.matcher.Match(&k) {
 			// A result was found!
 			break

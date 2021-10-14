@@ -17,20 +17,20 @@ type ed struct {
 	privateKey ed25519.PrivateKey
 }
 
-func New() key.SSHKey {
-	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		panic(err)
-	}
-	return ed{publicKey, privateKey}
+func Init() key.SSHKey {
+	return &ed{}
 }
 
-func (s ed) SSHPubkey() []byte {
+func (s *ed) New() {
+	s.publicKey, s.privateKey, _ = ed25519.GenerateKey(rand.Reader)
+}
+
+func (s *ed) SSHPubkey() []byte {
 	publicKey, _ := ssh.NewPublicKey(s.publicKey)
 	return ssh.MarshalAuthorizedKey(publicKey)
 }
 
-func (s ed) SSHPrivkey() []byte {
+func (s *ed) SSHPrivkey() []byte {
 	privDER := edkey.MarshalED25519PrivateKey(s.privateKey)
 	b := pem.Block{
 		Type:    "OPENSSH PRIVATE KEY",

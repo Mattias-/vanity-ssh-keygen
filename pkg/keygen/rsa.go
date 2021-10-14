@@ -24,5 +24,5 @@ func (k *rsaKeygen) Name() string {
 }
 
 func (k *rsaKeygen) New() key.SSHKey {
-	return rsa.New(k.bits)
+	return rsa.Init(k.bits)
 }

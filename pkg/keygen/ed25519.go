@@ -17,5 +17,5 @@ func (k *ed25519Keygen) Name() string {
 }
 
 func (k *ed25519Keygen) New() key.SSHKey {
-	return ed25519.New()
+	return ed25519.Init()
 }
