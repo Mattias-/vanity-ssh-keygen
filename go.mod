@@ -3,7 +3,7 @@ module github.com/Mattias-/vanity-ssh-keygen
 go 1.17
 
 require (
-	github.com/alecthomas/kong v0.2.20
+	github.com/alecthomas/kong v0.2.22
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
 	github.com/prometheus/client_golang v1.11.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
