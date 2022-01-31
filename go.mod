@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/alecthomas/kong v0.4.0
 	github.com/mikesmitty/edkey v0.0.0-20170222072505-3356ea4e686a
-	github.com/prometheus/client_golang v1.12.0
+	github.com/prometheus/client_golang v1.12.1
 	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce
 )
 
