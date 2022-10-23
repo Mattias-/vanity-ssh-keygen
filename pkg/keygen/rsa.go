@@ -3,8 +3,8 @@ package keygen
 import (
 	"fmt"
 
-	"github.com/Mattias-/vanity-ssh-keygen/pkg/ssh/key"
-	"github.com/Mattias-/vanity-ssh-keygen/pkg/ssh/rsa"
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/sshkey"
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/sshkey/rsa"
 )
 
 type rsaKeygen struct {
@@ -23,6 +23,6 @@ func (k *rsaKeygen) Name() string {
 	return k.name
 }
 
-func (k *rsaKeygen) New() key.SSHKey {
+func (k *rsaKeygen) New() sshkey.SSHKey {
 	return rsa.Init(k.bits)
 }

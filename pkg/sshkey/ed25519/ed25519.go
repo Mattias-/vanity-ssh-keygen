@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
-	"github.com/Mattias-/vanity-ssh-keygen/pkg/ssh/key"
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/sshkey"
 	"github.com/mikesmitty/edkey"
 )
 
@@ -17,7 +17,7 @@ type ed struct {
 	privateKey ed25519.PrivateKey
 }
 
-func Init() key.SSHKey {
+func Init() sshkey.SSHKey {
 	return &ed{}
 }
 

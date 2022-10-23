@@ -1,4 +1,4 @@
-package key
+package sshkey
 
 type SSHKey interface {
 	SSHPubkey() []byte

@@ -3,7 +3,7 @@ package matcher
 import (
 	"strings"
 
-	"github.com/Mattias-/vanity-ssh-keygen/pkg/ssh/key"
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/sshkey"
 )
 
 type ignorecaseEd25519Matcher struct {
@@ -25,7 +25,7 @@ func (m *ignorecaseEd25519Matcher) SetMatchString(matchString string) {
 	m.matchString = matchString
 }
 
-func (m *ignorecaseEd25519Matcher) Match(s *key.SSHKey) bool {
+func (m *ignorecaseEd25519Matcher) Match(s *sshkey.SSHKey) bool {
 	pubK := (*s).SSHPubkey()
 	return strings.Contains(strings.ToLower(string(pubK[:37])), m.matchString)
 }

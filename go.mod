@@ -1,6 +1,6 @@
 module github.com/Mattias-/vanity-ssh-keygen
 
-go 1.17
+go 1.19
 
 require (
 	github.com/alecthomas/kong v0.6.1

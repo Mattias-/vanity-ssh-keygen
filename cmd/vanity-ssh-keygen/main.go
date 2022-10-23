@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -19,6 +18,7 @@ import (
 
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/matcher"
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/sshkey"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/worker"
 )
 
@@ -54,22 +54,47 @@ type cli struct {
 }
 
 func runKeygen(c cli, matcher matcher.Matcher, kg keygen.Keygen) {
-	var wp *worker.WorkerPool
-
-	if c.Metrics {
-		go func() {
-			http.Handle("/metrics", promhttp.Handler())
-			log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", c.MetricsPort), nil))
-		}()
-	}
+	wp := worker.NewWorkerPool(
+		c.Threads,
+		matcher,
+		kg,
+	)
 
 	if c.StatsLogInterval != 0 {
 		ticker := time.NewTicker(c.StatsLogInterval)
 		defer ticker.Stop()
 		go func() {
 			for range ticker.C {
-				printStats(wp)
+				printStats(wp.GetStats())
 			}
+		}()
+	}
+
+	wp.Start()
+	result := <-wp.Results
+	wps := wp.GetStats()
+	printStats(wps)
+	outputKey(c, wps.Elapsed, *result)
+}
+
+func main() {
+	ml := matcher.MatcherList()
+	kl := keygen.KeygenList()
+
+	c := cli{}
+	ctx := kong.Parse(&c, kong.Vars{
+		"version":         fmt.Sprintf("%s commit:%s date:%s goVersion:%s platform:%s/%s", version, commit, date, runtime.Version(), runtime.GOOS, runtime.GOARCH),
+		"default_threads": fmt.Sprintf("%d", runtime.NumCPU()),
+		"keytypes":        strings.Join(kl.Names(), ","),
+		"default_keytype": kl.Names()[0],
+		"matchers":        strings.Join(ml.Names(), ","),
+		"default_matcher": ml.Names()[0],
+	})
+
+	if c.Metrics {
+		go func() {
+			http.Handle("/metrics", promhttp.Handler())
+			log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", c.MetricsPort), nil))
 		}()
 	}
 
@@ -93,18 +118,29 @@ func runKeygen(c cli, matcher matcher.Matcher, kg keygen.Keygen) {
 		}()
 	}
 
-	wp = worker.NewWorkerPool(
-		c.Threads,
-		matcher,
-		kg,
-	)
-	wp.Start()
-	result := <-wp.Results
+	m, err := ml.Get(c.Matcher)
+	if err != nil {
+		log.Fatal("Invalid key type: ", err)
+	}
+	m.SetMatchString(c.MatchString)
 
-	printStats(wp)
+	k, err := kl.Get(c.KeyType)
+	if err != nil {
+		log.Fatal("Invalid key type: ", err)
+	}
+	runKeygen(c, m, k)
+	ctx.Exit(0)
+}
 
-	privK := (*result).SSHPrivkey()
-	pubK := (*result).SSHPubkey()
+func printStats(wps *worker.WorkerPoolStats) {
+	log.Println("Time:", wps.Elapsed.Truncate(time.Second).String())
+	log.Println("Tested:", wps.Count)
+	log.Println(fmt.Sprintf("%.2f", float64(wps.Count)/wps.Elapsed.Seconds()/1000), "kKeys/s")
+}
+
+func outputKey(c cli, elapsed time.Duration, result sshkey.SSHKey) {
+	privK := result.SSHPrivkey()
+	pubK := result.SSHPubkey()
 	log.Print("Found pubkey: ", string(pubK))
 
 	outDir := c.OutputDir + "/"
@@ -118,99 +154,10 @@ func runKeygen(c cli, matcher matcher.Matcher, kg keygen.Keygen) {
 			PrivateKey: string(privK),
 			Metadata: Metadata{
 				FindString: c.MatchString,
-				Time:       int64(wp.GetStats().Elapsed / time.Second),
+				Time:       int64(elapsed / time.Second),
 			},
 		}, "", " ")
 		_ = os.WriteFile(outDir+"result.json", file, 0600)
 		log.Printf("Result written to: %s", outDir+"result.json")
 	}
-}
-
-type KeygenList struct {
-	keygens []keygen.Keygen
-}
-
-func (kl *KeygenList) Names() []string {
-	var kgs2 []string
-	for _, kg := range kl.keygens {
-		kgs2 = append(kgs2, kg.Name())
-	}
-	return kgs2
-}
-
-func (kl *KeygenList) Get(name string) (*keygen.Keygen, error) {
-	for _, kg := range kl.keygens {
-		if name == kg.Name() {
-			return &kg, nil
-		}
-	}
-	return nil, errors.New("Unknown keytype")
-}
-
-type MatcherList struct {
-	matchers []matcher.Matcher
-}
-
-func (ml *MatcherList) Names() []string {
-	var ms []string
-	for _, m := range ml.matchers {
-		ms = append(ms, m.Name())
-	}
-	return ms
-}
-
-func (ml *MatcherList) Get(name string) (*matcher.Matcher, error) {
-	for _, m := range ml.matchers {
-		if name == m.Name() {
-			return &m, nil
-		}
-	}
-	return nil, errors.New("Unknown keytype")
-}
-
-func main() {
-	ml := MatcherList{
-		[]matcher.Matcher{
-			matcher.NewIgnorecaseMatcher(),
-			matcher.NewIgnorecaseEd25519Matcher(),
-		},
-	}
-
-	kl := KeygenList{
-		[]keygen.Keygen{
-			keygen.NewEd25519(),
-			keygen.NewRsa(2048),
-			keygen.NewRsa(4096),
-		},
-	}
-
-	c := cli{}
-	ctx := kong.Parse(&c, kong.Vars{
-		"version":         fmt.Sprintf("%s commit:%s date:%s goVersion:%s platform:%s/%s", version, commit, date, runtime.Version(), runtime.GOOS, runtime.GOARCH),
-		"default_threads": fmt.Sprintf("%d", runtime.NumCPU()),
-		"keytypes":        strings.Join(kl.Names(), ","),
-		"default_keytype": kl.Names()[0],
-		"matchers":        strings.Join(ml.Names(), ","),
-		"default_matcher": ml.Names()[0],
-	})
-
-	m, err := ml.Get(c.Matcher)
-	if err != nil {
-		log.Fatal("Invalid key type: ", err)
-	}
-	(*m).SetMatchString(c.MatchString)
-
-	k, err := kl.Get(c.KeyType)
-	if err != nil {
-		log.Fatal("Invalid key type: ", err)
-	}
-	runKeygen(c, *m, *k)
-	ctx.Exit(0)
-}
-
-func printStats(wp *worker.WorkerPool) {
-	wps := wp.GetStats()
-	log.Println("Time:", wps.Elapsed.Truncate(time.Second).String())
-	log.Println("Tested:", wps.Count)
-	log.Println(fmt.Sprintf("%.2f", float64(wps.Count)/wps.Elapsed.Seconds()/1000), "kKeys/s")
 }

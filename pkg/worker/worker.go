@@ -5,10 +5,19 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen"
-	"github.com/Mattias-/vanity-ssh-keygen/pkg/matcher"
-	"github.com/Mattias-/vanity-ssh-keygen/pkg/ssh/key"
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/sshkey"
 )
+
+type matcher interface {
+	Name() string
+	SetMatchString(string)
+	Match(*sshkey.SSHKey) bool
+}
+
+type keygen interface {
+	Name() string
+	New() sshkey.SSHKey
+}
 
 var testedTotal = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
@@ -22,13 +31,19 @@ func init() {
 	prometheus.MustRegister(testedTotal)
 }
 
-type worker struct {
-	count   uint64
-	matcher matcher.Matcher
-	keygen  keygen.Keygen
+type worker interface {
+	run()
+	getCount() uint64
 }
 
-func (w *worker) run(result chan *key.SSHKey) {
+type kgworker struct {
+	count   uint64
+	matcher matcher
+	keygen  keygen
+	results chan *sshkey.SSHKey
+}
+
+func (w *kgworker) run() {
 	m := testedTotal.WithLabelValues(w.matcher.Name(), w.keygen.Name())
 	k := w.keygen.New()
 	for {
@@ -40,35 +55,17 @@ func (w *worker) run(result chan *key.SSHKey) {
 			break
 		}
 	}
-	result <- &k
+	w.results <- &k
 }
 
-type WorkerPool struct {
-	workers []*worker
+func (w *kgworker) getCount() uint64 {
+	return w.count
+}
+
+type workerPool struct {
+	workers []worker
 	start   time.Time
-	Results chan *key.SSHKey
-}
-
-func NewWorkerPool(instances int, matcher matcher.Matcher, kg keygen.Keygen) *WorkerPool {
-	var workers []*worker
-	for i := 0; i < instances; i++ {
-		w := &worker{
-			matcher: matcher,
-			keygen:  kg,
-		}
-		workers = append(workers, w)
-	}
-	return &WorkerPool{
-		workers: workers,
-		start:   time.Now(),
-		Results: make(chan *key.SSHKey),
-	}
-}
-
-func (wp *WorkerPool) Start() {
-	for _, w := range wp.workers {
-		go w.run(wp.Results)
-	}
+	Results chan *sshkey.SSHKey
 }
 
 type WorkerPoolStats struct {
@@ -77,10 +74,32 @@ type WorkerPoolStats struct {
 	Elapsed time.Duration
 }
 
-func (wp *WorkerPool) GetStats() *WorkerPoolStats {
+func NewWorkerPool(instances int, matcher matcher, kg keygen) *workerPool {
+	wp := &workerPool{
+		Results: make(chan *sshkey.SSHKey),
+	}
+	for i := 0; i < instances; i++ {
+		w := kgworker{
+			matcher: matcher,
+			keygen:  kg,
+			results: wp.Results,
+		}
+		wp.workers = append(wp.workers, &w)
+	}
+	return wp
+}
+
+func (wp *workerPool) Start() {
+	wp.start = time.Now()
+	for _, w := range wp.workers {
+		go w.run()
+	}
+}
+
+func (wp *workerPool) GetStats() *WorkerPoolStats {
 	var sum uint64
 	for _, w := range wp.workers {
-		sum += w.count
+		sum += w.getCount()
 	}
 	return &WorkerPoolStats{
 		Workers: len(wp.workers),
