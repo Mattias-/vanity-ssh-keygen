@@ -9,7 +9,7 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/sshkey"
-	"github.com/mikesmitty/edkey"
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/sshkey/ed25519/edkey"
 )
 
 type ed struct {
