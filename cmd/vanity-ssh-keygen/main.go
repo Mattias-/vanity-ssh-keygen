@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -110,8 +109,8 @@ func runKeygen(c cli, matcher matcher.Matcher, kg keygen.Keygen) {
 
 	outDir := c.OutputDir + "/"
 	if c.Output == "pem-files" {
-		_ = ioutil.WriteFile(outDir+c.MatchString, privK, 0600)
-		_ = ioutil.WriteFile(outDir+c.MatchString+".pub", pubK, 0644)
+		_ = os.WriteFile(outDir+c.MatchString, privK, 0600)
+		_ = os.WriteFile(outDir+c.MatchString+".pub", pubK, 0644)
 		log.Printf("Keypair written to: %[1]s and %[1]s.pub", outDir+c.MatchString)
 	} else if c.Output == "json-file" {
 		file, _ := json.MarshalIndent(OutputData{
@@ -122,7 +121,7 @@ func runKeygen(c cli, matcher matcher.Matcher, kg keygen.Keygen) {
 				Time:       int64(wp.GetStats().Elapsed / time.Second),
 			},
 		}, "", " ")
-		_ = ioutil.WriteFile(outDir+"result.json", file, 0600)
+		_ = os.WriteFile(outDir+"result.json", file, 0600)
 		log.Printf("Result written to: %s", outDir+"result.json")
 	}
 }
