@@ -8,13 +8,20 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"runtime/debug"
 	"runtime/pprof"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/alecthomas/kong"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/otel/exporters/prometheus"
+	"go.opentelemetry.io/otel/metric/global"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
+	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/matcher"
@@ -81,6 +88,16 @@ func main() {
 	ml := matcher.MatcherList()
 	kl := keygen.KeygenList()
 
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, kv := range info.Settings {
+			if kv.Key == "vcs.revision" {
+				commit = kv.Value
+			} else if kv.Key == "vcs.time" {
+				date = kv.Value
+			}
+		}
+	}
+
 	c := cli{}
 	ctx := kong.Parse(&c, kong.Vars{
 		"version":         fmt.Sprintf("%s commit:%s date:%s goVersion:%s platform:%s/%s", version, commit, date, runtime.Version(), runtime.GOOS, runtime.GOARCH),
@@ -92,6 +109,20 @@ func main() {
 	})
 
 	if c.Metrics {
+		exporter, err := prometheus.New()
+		if err != nil {
+			log.Fatal(err)
+		}
+		provider := metric.NewMeterProvider(
+			metric.WithReader(exporter),
+			metric.WithResource(
+				resource.NewWithAttributes(semconv.SchemaURL,
+					semconv.ServiceNameKey.String("vanity-ssh-keygen"),
+					semconv.ServiceVersionKey.String(version),
+					semconv.ServiceInstanceIDKey.String(uuid.NewString()),
+				)))
+
+		global.SetMeterProvider(provider)
 		go func() {
 			http.Handle("/metrics", promhttp.Handler())
 			log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", c.MetricsPort), nil))
