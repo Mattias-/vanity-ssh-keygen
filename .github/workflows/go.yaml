@@ -32,7 +32,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
-        go-version: 1.17
+        go-version: 1.19
 
     - name: Build
       run: go build -v ./cmd/vanity-ssh-keygen/
@@ -57,4 +57,4 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v3
       with:
-        version: v1.29
+        version: latest
