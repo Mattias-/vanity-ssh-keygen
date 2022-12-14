@@ -39,7 +39,7 @@ jobs:
         version: latest
 
     - name: Release
-      uses: goreleaser/goreleaser-action@v3
+      uses: goreleaser/goreleaser-action@v4
       if: success() && startsWith(github.ref, 'refs/tags/v')
       with:
         version: latest
