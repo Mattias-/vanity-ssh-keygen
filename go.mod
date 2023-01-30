@@ -7,10 +7,10 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/prometheus/client_golang v1.14.0
 	go.opentelemetry.io/otel v1.12.0
-	go.opentelemetry.io/otel/exporters/prometheus v0.34.0
-	go.opentelemetry.io/otel/metric v0.34.0
+	go.opentelemetry.io/otel/exporters/prometheus v0.35.0
+	go.opentelemetry.io/otel/metric v0.35.0
 	go.opentelemetry.io/otel/sdk v1.12.0
-	go.opentelemetry.io/otel/sdk/metric v0.34.0
+	go.opentelemetry.io/otel/sdk/metric v0.35.0
 	golang.org/x/crypto v0.5.0
 )
 
