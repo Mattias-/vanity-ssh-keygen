@@ -27,6 +27,7 @@ import (
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/matcher"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/sshkey"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/worker"
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/workerpool"
 )
 
 var (
@@ -61,11 +62,20 @@ type cli struct {
 }
 
 func runKeygen(c cli, matcher matcher.Matcher, kg keygen.Keygen) {
-	wp := worker.NewWorkerPool(
-		c.Threads,
-		matcher,
-		kg,
-	)
+	var workers []workerpool.Worker[chan sshkey.SSHKey]
+	for i := 0; i < c.Threads; i++ {
+		w := &worker.Kgworker{
+			Matcher:   matcher,
+			Keygen:    kg,
+			Matchfunc: matcher.Match,
+			Keyfunc:   kg.New,
+		}
+		workers = append(workers, w)
+	}
+	wp := workerpool.WorkerPool[chan sshkey.SSHKey]{
+		Workers: workers,
+		Results: make(chan sshkey.SSHKey),
+	}
 
 	if c.StatsLogInterval != 0 {
 		ticker := time.NewTicker(c.StatsLogInterval)
@@ -81,7 +91,7 @@ func runKeygen(c cli, matcher matcher.Matcher, kg keygen.Keygen) {
 	result := <-wp.Results
 	wps := wp.GetStats()
 	printStats(wps)
-	outputKey(c, wps.Elapsed, *result)
+	outputKey(c, wps.Elapsed, result)
 }
 
 func main() {
@@ -163,7 +173,7 @@ func main() {
 	ctx.Exit(0)
 }
 
-func printStats(wps *worker.WorkerPoolStats) {
+func printStats(wps *workerpool.WorkerPoolStats) {
 	log.Println("Time:", wps.Elapsed.Truncate(time.Second).String())
 	log.Println("Tested:", wps.Count)
 	log.Println(fmt.Sprintf("%.2f", float64(wps.Count)/wps.Elapsed.Seconds()/1000), "kKeys/s")
