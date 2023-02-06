@@ -1,39 +1,41 @@
 package keygen
 
 import (
-	"errors"
+	"golang.org/x/exp/maps"
 
-	"github.com/Mattias-/vanity-ssh-keygen/pkg/sshkey"
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/sshkey/ed25519"
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/sshkey/rsa"
 )
 
-type Keygen interface {
-	Name() string
-	New() sshkey.SSHKey
+type SSHKey interface {
+	SSHPubkey() []byte
+	SSHPrivkey() []byte
+	New()
 }
+
+type Keygen func() SSHKey
+
+type kli map[string]Keygen
 
 func KeygenList() kli {
-	return []Keygen{
-		NewEd25519(),
-		NewRsa(2048),
-		NewRsa(4096),
+	return kli{
+		"ed25519": func() SSHKey {
+			return ed25519.Init()
+		},
+		"rsa-2048": func() SSHKey {
+			return rsa.Init(2048)
+		},
+		"rsa-4096": func() SSHKey {
+			return rsa.Init(4096)
+		},
 	}
 }
-
-type kli []Keygen
 
 func (kl kli) Names() []string {
-	var ks []string
-	for _, k := range kl {
-		ks = append(ks, k.Name())
-	}
-	return ks
+	return maps.Keys(kl)
 }
 
-func (kl kli) Get(name string) (Keygen, error) {
-	for _, k := range kl {
-		if name == k.Name() {
-			return k, nil
-		}
-	}
-	return nil, errors.New("Unknown item")
+func (kl kli) Get(name string) (Keygen, bool) {
+	v, ok := kl[name]
+	return v, ok
 }

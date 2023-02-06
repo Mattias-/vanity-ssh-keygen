@@ -39,25 +39,21 @@ func (wp *WorkerPool[R]) Start() {
 }
 
 func (wp *WorkerPool[R]) RegisterCounter() {
-	counter, err := meter.AsyncInt64().Counter(
+	_, err := meter.Int64ObservableCounter(
 		"keys.generated",
 		instrument.WithDescription("Keys generated"),
 		instrument.WithUnit("{keys}"),
-	)
-	if err != nil {
-		log.Fatalf("failed to initialize instrument: %v", err)
-	}
-
-	err = meter.RegisterCallback([]instrument.Asynchronous{counter},
-		func(ctx context.Context) {
+		instrument.WithInt64Callback(func(ctx context.Context, o instrument.Int64Observer) error {
 			var sum int64
 			for _, w := range wp.Workers {
 				sum += int64(w.Count())
 			}
-			counter.Observe(ctx, sum)
-		})
+			o.Observe(sum)
+			return nil
+		}),
+	)
 	if err != nil {
-		log.Fatalf("failed to register instrument callback: %v", err)
+		log.Fatalf("failed to initialize instrument: %v", err)
 	}
 }
 

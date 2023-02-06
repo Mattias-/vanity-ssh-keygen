@@ -3,13 +3,13 @@ package matcher
 import (
 	"errors"
 
-	"github.com/Mattias-/vanity-ssh-keygen/pkg/sshkey"
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen"
 )
 
 type Matcher interface {
 	Name() string
 	SetMatchString(string)
-	Match(*sshkey.SSHKey) bool
+	Match(keygen.SSHKey) bool
 }
 
 func MatcherList() mli {

@@ -1,33 +1,23 @@
 package worker
 
 import (
-	"github.com/Mattias-/vanity-ssh-keygen/pkg/sshkey"
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen"
 )
 
-type matcher interface {
-	Match(*sshkey.SSHKey) bool
-}
-
-type keygen interface {
-	New() sshkey.SSHKey
-}
-
 type Kgworker struct {
-	Keygen  keygen
-	Matcher matcher
-	results chan sshkey.SSHKey
+	results chan keygen.SSHKey
 	count   uint64
 
-	Matchfunc func(*sshkey.SSHKey) bool
-	Keyfunc   func() sshkey.SSHKey
+	Matchfunc func(keygen.SSHKey) bool
+	Keyfunc   func() keygen.SSHKey
 }
 
 func (w *Kgworker) Run() {
-	k := w.Keygen.New()
+	k := w.Keyfunc()
 	for {
 		w.count += 1
 		k.New()
-		if w.Matcher.Match(&k) {
+		if w.Matchfunc(k) {
 			// A result was found!
 			break
 		}
@@ -39,6 +29,6 @@ func (w *Kgworker) Count() uint64 {
 	return w.count
 }
 
-func (w *Kgworker) SetResultChan(results chan sshkey.SSHKey) {
+func (w *Kgworker) SetResultChan(results chan keygen.SSHKey) {
 	w.results = results
 }

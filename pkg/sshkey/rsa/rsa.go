@@ -7,8 +7,6 @@ import (
 	"encoding/pem"
 
 	"golang.org/x/crypto/ssh"
-
-	"github.com/Mattias-/vanity-ssh-keygen/pkg/sshkey"
 )
 
 type localRsa struct {
@@ -16,7 +14,7 @@ type localRsa struct {
 	bitSize    int
 }
 
-func Init(bits int) sshkey.SSHKey {
+func Init(bits int) *localRsa {
 	return &localRsa{bitSize: bits}
 }
 

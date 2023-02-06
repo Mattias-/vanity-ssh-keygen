@@ -25,7 +25,6 @@ import (
 
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/matcher"
-	"github.com/Mattias-/vanity-ssh-keygen/pkg/sshkey"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/worker"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/workerpool"
 )
@@ -62,19 +61,17 @@ type cli struct {
 }
 
 func runKeygen(c cli, matcher matcher.Matcher, kg keygen.Keygen) {
-	var workers []workerpool.Worker[chan sshkey.SSHKey]
+	var workers []workerpool.Worker[chan keygen.SSHKey]
 	for i := 0; i < c.Threads; i++ {
 		w := &worker.Kgworker{
-			Matcher:   matcher,
-			Keygen:    kg,
 			Matchfunc: matcher.Match,
-			Keyfunc:   kg.New,
+			Keyfunc:   kg,
 		}
 		workers = append(workers, w)
 	}
-	wp := workerpool.WorkerPool[chan sshkey.SSHKey]{
+	wp := workerpool.WorkerPool[chan keygen.SSHKey]{
 		Workers: workers,
-		Results: make(chan sshkey.SSHKey),
+		Results: make(chan keygen.SSHKey),
 	}
 
 	if c.StatsLogInterval != 0 {
@@ -161,13 +158,13 @@ func main() {
 
 	m, err := ml.Get(c.Matcher)
 	if err != nil {
-		log.Fatal("Invalid key type: ", err)
+		log.Fatal("Invalid matcher")
 	}
 	m.SetMatchString(c.MatchString)
 
-	k, err := kl.Get(c.KeyType)
-	if err != nil {
-		log.Fatal("Invalid key type: ", err)
+	k, ok := kl.Get(c.KeyType)
+	if !ok {
+		log.Fatal("Invalid key type")
 	}
 	runKeygen(c, m, k)
 	ctx.Exit(0)
@@ -179,7 +176,7 @@ func printStats(wps *workerpool.WorkerPoolStats) {
 	log.Println(fmt.Sprintf("%.2f", float64(wps.Count)/wps.Elapsed.Seconds()/1000), "kKeys/s")
 }
 
-func outputKey(c cli, elapsed time.Duration, result sshkey.SSHKey) {
+func outputKey(c cli, elapsed time.Duration, result keygen.SSHKey) {
 	privK := result.SSHPrivkey()
 	pubK := result.SSHPubkey()
 	log.Print("Found pubkey: ", string(pubK))
