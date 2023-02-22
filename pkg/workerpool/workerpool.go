@@ -9,8 +9,6 @@ import (
 	"go.opentelemetry.io/otel/metric/instrument"
 )
 
-var meter = global.Meter("keygen")
-
 type Worker[R any] interface {
 	Run()
 	Count() uint64
@@ -39,6 +37,7 @@ func (wp *WorkerPool[R]) Start() {
 }
 
 func (wp *WorkerPool[R]) RegisterCounter() {
+	var meter = global.Meter("keygen")
 	_, err := meter.Int64ObservableCounter(
 		"keys.generated",
 		instrument.WithDescription("Keys generated"),
