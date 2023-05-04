@@ -21,7 +21,7 @@ import (
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
 
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/matcher"
@@ -116,17 +116,18 @@ func main() {
 	})
 
 	if c.Metrics {
-		exporter, err := prometheus.New()
+		exporter, err := prometheus.New(prometheus.WithoutScopeInfo())
 		if err != nil {
 			log.Fatal(err)
 		}
 		provider := metric.NewMeterProvider(
 			metric.WithReader(exporter),
 			metric.WithResource(
-				resource.NewWithAttributes(semconv.SchemaURL,
-					semconv.ServiceNameKey.String("vanity-ssh-keygen"),
-					semconv.ServiceVersionKey.String(version),
-					semconv.ServiceInstanceIDKey.String(uuid.NewString()),
+				resource.NewWithAttributes(
+					semconv.SchemaURL,
+					semconv.ServiceName("vanity-ssh-keygen"),
+					semconv.ServiceVersion(version),
+					semconv.ServiceInstanceID(uuid.NewString()),
 				)))
 
 		global.SetMeterProvider(provider)

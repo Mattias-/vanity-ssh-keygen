@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/metric/instrument"
 )
 
 type Worker[R any] interface {
@@ -40,9 +40,9 @@ func (wp *WorkerPool[R]) RegisterCounter() {
 	var meter = global.Meter("keygen")
 	_, err := meter.Int64ObservableCounter(
 		"keys.generated",
-		instrument.WithDescription("Keys generated"),
-		instrument.WithUnit("{keys}"),
-		instrument.WithInt64Callback(func(ctx context.Context, o instrument.Int64Observer) error {
+		metric.WithDescription("Keys generated"),
+		metric.WithUnit("{keys}"),
+		metric.WithInt64Callback(func(ctx context.Context, o metric.Int64Observer) error {
 			var sum int64
 			for _, w := range wp.Workers {
 				sum += int64(w.Count())
