@@ -17,11 +17,11 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/prometheus"
-	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.18.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
 
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/matcher"
@@ -130,10 +130,14 @@ func main() {
 					semconv.ServiceInstanceID(uuid.NewString()),
 				)))
 
-		global.SetMeterProvider(provider)
+		otel.SetMeterProvider(provider)
 		go func() {
 			http.Handle("/metrics", promhttp.Handler())
-			log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", c.MetricsPort), nil))
+			server := &http.Server{
+				Addr:              fmt.Sprintf(":%d", c.MetricsPort),
+				ReadHeaderTimeout: time.Second * 1,
+			}
+			log.Fatal(server.ListenAndServe())
 		}()
 	}
 
@@ -185,7 +189,7 @@ func outputKey(c cli, elapsed time.Duration, result keygen.SSHKey) {
 	outDir := c.OutputDir + "/"
 	if c.Output == "pem-files" {
 		_ = os.WriteFile(outDir+c.MatchString, privK, 0600)
-		_ = os.WriteFile(outDir+c.MatchString+".pub", pubK, 0644)
+		_ = os.WriteFile(outDir+c.MatchString+".pub", pubK, 0600)
 		log.Printf("Keypair written to: %[1]s and %[1]s.pub", outDir+c.MatchString)
 	} else if c.Output == "json-file" {
 		file, _ := json.MarshalIndent(OutputData{

@@ -10,11 +10,11 @@ import (
 
 func TestSshAdd(t *testing.T) {
 	for _, v := range KeygenList() {
-		SshAddCompatible(t, v())
+		SSHAddCompatible(t, v())
 	}
 }
 
-func SshAddCompatible(t *testing.T, k SSHKey) {
+func SSHAddCompatible(t *testing.T, k SSHKey) {
 	t.Helper()
 
 	k.New()

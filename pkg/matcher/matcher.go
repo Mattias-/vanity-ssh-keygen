@@ -35,5 +35,5 @@ func (ml mli) Get(name string) (Matcher, error) {
 			return m, nil
 		}
 	}
-	return nil, errors.New("Unknown item")
+	return nil, errors.New("unknown item")
 }

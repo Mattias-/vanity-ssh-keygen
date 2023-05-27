@@ -38,7 +38,7 @@ func MarshalED25519PrivateKey(key ed25519.PrivateKey) []byte {
 	}{}
 
 	// Set our check ints
-	ci := rand.Uint32()
+	ci := rand.Uint32() //nolint
 	pk1.Check1 = ci
 	pk1.Check2 = ci
 

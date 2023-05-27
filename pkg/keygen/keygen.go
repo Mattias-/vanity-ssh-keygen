@@ -1,8 +1,6 @@
 package keygen
 
 import (
-	"golang.org/x/exp/maps"
-
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/sshkey/ed25519"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/sshkey/rsa"
 )
@@ -32,7 +30,11 @@ func KeygenList() kli {
 }
 
 func (kl kli) Names() []string {
-	return maps.Keys(kl)
+	r := make([]string, 0, len(kl))
+	for k := range kl {
+		r = append(r, k)
+	}
+	return r
 }
 
 func (kl kli) Get(name string) (Keygen, bool) {
