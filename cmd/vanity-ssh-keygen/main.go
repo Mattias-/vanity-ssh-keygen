@@ -21,7 +21,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/matcher"
