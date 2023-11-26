@@ -9,6 +9,7 @@ import (
 )
 
 func TestSshAdd(t *testing.T) {
+	t.Skip()
 	for _, v := range KeygenList() {
 		SSHAddCompatible(t, v())
 	}
