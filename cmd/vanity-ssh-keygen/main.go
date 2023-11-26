@@ -167,7 +167,7 @@ func main() {
 		}()
 	}
 	if c.PyroscopeProfile {
-		pyroscope.Start(pyroscope.Config{
+		profiler, err := pyroscope.Start(pyroscope.Config{
 			Logger:          pyroscope.StandardLogger,
 			ApplicationName: serviceName,
 			//ServerAddress:     os.Getenv("PYROSCOPE_SERVER"),
@@ -179,6 +179,22 @@ func main() {
 				"cpus":       fmt.Sprintf("%d", runtime.NumCPU()),
 			},
 		})
+		if err != nil {
+			slog.Error("Could not start profiling", "error", err)
+			os.Exit(1)
+		}
+		defer func() {
+			_ = profiler.Stop()
+		}()
+		// listening OS shutdown singal
+		signalChan := make(chan os.Signal, 1)
+		signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+		go func() {
+			<-signalChan
+			slog.Info("Got shutdown signal.")
+			_ = profiler.Stop()
+			os.Exit(1)
+		}()
 	}
 
 	m, err := ml.Get(c.Matcher)
