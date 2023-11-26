@@ -31,8 +31,6 @@ import (
 
 var (
 	version = "dev"
-	commit  = "none"
-	date    = "unknown"
 )
 
 type Metadata struct {
@@ -95,6 +93,8 @@ func main() {
 	ml := matcher.MatcherList()
 	kl := keygen.KeygenList()
 
+	commit := "none"
+	date := "unknown"
 	if info, ok := debug.ReadBuildInfo(); ok {
 		for _, kv := range info.Settings {
 			if kv.Key == "vcs.revision" {
