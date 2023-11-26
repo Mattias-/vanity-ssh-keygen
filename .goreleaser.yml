@@ -5,8 +5,11 @@ before:
     - go mod tidy
     - go mod download
 
+release:
+  disable: true
+
 builds:
-  - main: ./cmd/vanity-ssh-keygen/main.go
+  - main: ./cmd/vanity-ssh-keygen
     env:
       - CGO_ENABLED=0
     goos:
@@ -15,11 +18,36 @@ builds:
     goarch:
       - amd64
       - arm64
+    ignore:
+      - goos: darwin
+        goarch: amd64
     mod_timestamp: "{{ .CommitTimestamp }}"
     ldflags:
-      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.CommitDate}} -X main.builtBy=goreleaser
+      - -s -w -X main.version={{.Version}}
     flags:
       - -trimpath
+
+kos:
+  - main: ./cmd/vanity-ssh-keygen
+    tags:
+      - "{{.Version}}"
+      - latest
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+    flags:
+      - -trimpath
+    env:
+      - CGO_ENABLED=0
+    bare: true
+    creation_time: "{{.CommitTimestamp}}"
+    ko_data_creation_time: "{{.CommitTimestamp}}"
+
+    platforms:
+      - linux/amd64
+      - linux/arm64
+
+sboms:
+  - artifacts: archive
 
 archives:
   - format: binary
@@ -33,40 +61,10 @@ snapshot:
   name_template: "{{ .Tag }}-next"
 
 changelog:
+  skip: true
   sort: asc
   filters:
     exclude:
       - "^docs:"
       - "^test:"
       - "^hack:"
-
-dockers:
-  - image_templates:
-      #- "{{.ProjectName}}:latest"
-      - "{{ .ProjectName }}:{{ .Version }}-amd64"
-    skip_push: true
-    dockerfile: goreleaser.Dockerfile
-    use: buildx
-    build_flag_templates:
-      - --pull
-      - --platform=linux/amd64
-      - --label=org.opencontainers.image.created={{.Date}}
-      - --label=org.opencontainers.image.title={{.ProjectName}}
-      - --label=org.opencontainers.image.revision={{.FullCommit}}
-      - --label=org.opencontainers.image.version={{.Version}}
-  - image_templates:
-      - "{{.ProjectName}}:{{ .Version }}-arm64v8"
-    skip_push: true
-    dockerfile: goreleaser.Dockerfile
-    use: buildx
-    goarch: arm64
-    build_flag_templates:
-      - --pull
-      - --platform=linux/arm64/v8
-
-docker_manifests:
-  - name_template: "{{ .ProjectName }}:{{ .Version }}"
-    skip_push: true
-    image_templates:
-      - "{{ .ProjectName }}:{{ .Version }}-amd64"
-      - "{{ .ProjectName }}:{{ .Version }}-arm64v8"
