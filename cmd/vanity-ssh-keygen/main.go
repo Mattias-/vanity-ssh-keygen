@@ -1,10 +1,10 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
@@ -16,9 +16,8 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/google/uuid"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/prometheus"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
@@ -29,8 +28,13 @@ import (
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/workerpool"
 )
 
+const (
+	serviceName = "vanity-ssh-keygen"
+)
+
 var (
-	version = "dev"
+	version    = "dev"
+	instanceID = uuid.NewString()
 )
 
 type Metadata struct {
@@ -52,7 +56,6 @@ type cli struct {
 	Threads          int              `short:"j" help:"Execution threads. Defaults to the number of logical CPU cores" default:"${default_threads}"`
 	Profile          bool             `help:"Profile the process. Write pprof CPU profile to ./pprof" default:"false"`
 	Metrics          bool             `help:"Enable metrics server." default:"true" negatable:""`
-	MetricsPort      int              `help:"Listening port for metrics server." default:"9101"`
 	Output           string           `short:"o" help:"Output format. One of: pem-files|json-file." default:"pem-files"`
 	OutputDir        string           `help:"Output directory." default:"./" type:"existingdir"`
 	StatsLogInterval time.Duration    `help:"Statistics will be printed at this interval, set to 0 to disable" default:"2s"`
@@ -106,7 +109,7 @@ func main() {
 	}
 
 	c := cli{}
-	ctx := kong.Parse(&c, kong.Vars{
+	kongctx := kong.Parse(&c, kong.Vars{
 		"version":         fmt.Sprintf("%s commit:%s date:%s goVersion:%s platform:%s/%s", version, commit, date, runtime.Version(), runtime.GOOS, runtime.GOARCH),
 		"default_threads": fmt.Sprintf("%d", runtime.NumCPU()),
 		"keytypes":        strings.Join(kl.Names(), ","),
@@ -115,30 +118,27 @@ func main() {
 		"default_matcher": ml.Names()[0],
 	})
 
+	ctx := context.Background()
 	if c.Metrics {
-		exporter, err := prometheus.New(prometheus.WithoutScopeInfo())
+		exporter, err := otlpmetrichttp.New(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+		resource, err := resource.Merge(resource.Default(),
+			resource.NewWithAttributes(semconv.SchemaURL,
+				semconv.ServiceName(serviceName),
+				semconv.ServiceVersion(version),
+				semconv.ServiceInstanceID(instanceID),
+			))
 		if err != nil {
 			log.Fatal(err)
 		}
 		provider := metric.NewMeterProvider(
-			metric.WithReader(exporter),
-			metric.WithResource(
-				resource.NewWithAttributes(
-					semconv.SchemaURL,
-					semconv.ServiceName("vanity-ssh-keygen"),
-					semconv.ServiceVersion(version),
-					semconv.ServiceInstanceID(uuid.NewString()),
-				)))
+			metric.WithReader(metric.NewPeriodicReader(exporter)),
+			metric.WithResource(resource),
+		)
 
 		otel.SetMeterProvider(provider)
-		go func() {
-			http.Handle("/metrics", promhttp.Handler())
-			server := &http.Server{
-				Addr:              fmt.Sprintf(":%d", c.MetricsPort),
-				ReadHeaderTimeout: time.Second * 1,
-			}
-			log.Fatal(server.ListenAndServe())
-		}()
 	}
 
 	if c.Profile {
@@ -172,7 +172,7 @@ func main() {
 		log.Fatal("Invalid key type")
 	}
 	runKeygen(c, m, k)
-	ctx.Exit(0)
+	kongctx.Exit(0)
 }
 
 func printStats(wps *workerpool.WorkerPoolStats) {
