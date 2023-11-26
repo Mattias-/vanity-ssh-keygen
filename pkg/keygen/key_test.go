@@ -13,7 +13,7 @@ func TestSshAdd(t *testing.T) {
 		t.Skip("Skipping testing in CI environment")
 	}
 	for _, v := range KeygenList() {
-		SSHAddCompatible(t, v())
+		SSHAddCompatible(t, v.f())
 	}
 }
 

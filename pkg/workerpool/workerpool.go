@@ -2,7 +2,7 @@ package workerpool
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -52,7 +52,7 @@ func (wp *WorkerPool[R]) RegisterCounter() {
 		}),
 	)
 	if err != nil {
-		log.Fatalf("failed to initialize instrument: %v", err)
+		slog.Warn("failed to initialize instrument", "error", err)
 	}
 }
 

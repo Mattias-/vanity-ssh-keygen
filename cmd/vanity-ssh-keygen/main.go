@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"runtime"
@@ -16,6 +16,7 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/google/uuid"
+	"github.com/grafana/pyroscope-go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/sdk/metric"
@@ -55,6 +56,7 @@ type cli struct {
 	KeyType          string           `short:"t" help:"Key type to generate. One of: ${keytypes}" enum:"${keytypes}" default:"${default_keytype}"`
 	Threads          int              `short:"j" help:"Execution threads. Defaults to the number of logical CPU cores" default:"${default_threads}"`
 	Profile          bool             `help:"Profile the process. Write pprof CPU profile to ./pprof" default:"false"`
+	PyroscopeProfile bool             `help:"Profile the process and upload data to Pyroscope" default:"false"`
 	Metrics          bool             `help:"Enable metrics server." default:"true" negatable:""`
 	Output           string           `short:"o" help:"Output format. One of: pem-files|json-file." default:"pem-files"`
 	OutputDir        string           `help:"Output directory." default:"./" type:"existingdir"`
@@ -122,7 +124,8 @@ func main() {
 	if c.Metrics {
 		exporter, err := otlpmetrichttp.New(ctx)
 		if err != nil {
-			log.Fatal(err)
+			slog.Error("Could not create metric exporter", "error", err)
+			os.Exit(1)
 		}
 		resource, err := resource.Merge(resource.Default(),
 			resource.NewWithAttributes(semconv.SchemaURL,
@@ -131,7 +134,8 @@ func main() {
 				semconv.ServiceInstanceID(instanceID),
 			))
 		if err != nil {
-			log.Fatal(err)
+			slog.Error("Could not crete metric resources", "error", err)
+			os.Exit(1)
 		}
 		provider := metric.NewMeterProvider(
 			metric.WithReader(metric.NewPeriodicReader(exporter)),
@@ -144,10 +148,12 @@ func main() {
 	if c.Profile {
 		f, err := os.Create("./pprof")
 		if err != nil {
-			log.Fatal("Could not create CPU profile: ", err)
+			slog.Error("Could not create profile file", "error", err)
+			os.Exit(1)
 		}
 		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatal("Could not start CPU profile: ", err)
+			slog.Error("Could not start profiling", "error", err)
+			os.Exit(1)
 		}
 		defer pprof.StopCPUProfile()
 		// listening OS shutdown singal
@@ -155,42 +161,62 @@ func main() {
 		signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 		go func() {
 			<-signalChan
-			log.Printf("Got shutdown signal.")
+			slog.Info("Got shutdown signal.")
 			pprof.StopCPUProfile()
 			os.Exit(1)
 		}()
 	}
+	if c.PyroscopeProfile {
+		pyroscope.Start(pyroscope.Config{
+			Logger:          pyroscope.StandardLogger,
+			ApplicationName: serviceName,
+			//ServerAddress:     os.Getenv("PYROSCOPE_SERVER"),
+			BasicAuthUser:     os.Getenv("GRAFANA_INSTANCE_ID"),
+			BasicAuthPassword: os.Getenv("TOKEN"),
+			Tags: map[string]string{
+				"instanceID": instanceID,
+				"platform":   fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+				"cpus":       fmt.Sprintf("%d", runtime.NumCPU()),
+			},
+		})
+	}
 
 	m, err := ml.Get(c.Matcher)
 	if err != nil {
-		log.Fatal("Invalid matcher")
+		slog.Error("Invalid matcher", "error", err)
+		os.Exit(1)
 	}
 	m.SetMatchString(c.MatchString)
 
 	k, ok := kl.Get(c.KeyType)
 	if !ok {
-		log.Fatal("Invalid key type")
+		slog.Error("Invalid key type", "error", err)
+		os.Exit(1)
 	}
 	runKeygen(c, m, k)
 	kongctx.Exit(0)
 }
 
 func printStats(wps *workerpool.WorkerPoolStats) {
-	log.Println("Time:", wps.Elapsed.Truncate(time.Second).String())
-	log.Println("Tested:", wps.Count)
-	log.Println(fmt.Sprintf("%.2f", float64(wps.Count)/wps.Elapsed.Seconds()/1000), "kKeys/s")
+	slog.Info("Tested keys",
+		slog.Duration("time", wps.Elapsed),
+		slog.Uint64("tested", wps.Count),
+		slog.Float64("kKeys/s", float64(wps.Count)/wps.Elapsed.Seconds()/1000),
+	)
 }
 
 func outputKey(c cli, elapsed time.Duration, result keygen.SSHKey) {
 	privK := result.SSHPrivkey()
 	pubK := result.SSHPubkey()
-	log.Print("Found pubkey: ", string(pubK))
+	slog.Info("Found matching public key", "pubkey", string(pubK))
 
 	outDir := c.OutputDir + "/"
 	if c.Output == "pem-files" {
-		_ = os.WriteFile(outDir+c.MatchString, privK, 0600)
-		_ = os.WriteFile(outDir+c.MatchString+".pub", pubK, 0600)
-		log.Printf("Keypair written to: %[1]s and %[1]s.pub", outDir+c.MatchString)
+		privkeyFileName := outDir + c.MatchString
+		pubkeyFileName := outDir + c.MatchString + ".pub"
+		_ = os.WriteFile(privkeyFileName, privK, 0600)
+		_ = os.WriteFile(pubkeyFileName, pubK, 0600)
+		slog.Info("Result keypair stored", "privkey_file", privkeyFileName, "pubkey_file", pubkeyFileName)
 	} else if c.Output == "json-file" {
 		file, _ := json.MarshalIndent(OutputData{
 			PublicKey:  string(pubK),
@@ -200,7 +226,8 @@ func outputKey(c cli, elapsed time.Duration, result keygen.SSHKey) {
 				Time:       int64(elapsed / time.Second),
 			},
 		}, "", " ")
-		_ = os.WriteFile(outDir+"result.json", file, 0600)
-		log.Printf("Result written to: %s", outDir+"result.json")
+		jsonFileName := outDir + "result.json"
+		_ = os.WriteFile(jsonFileName, file, 0600)
+		slog.Info("Result keypair stored", "json_file", jsonFileName)
 	}
 }
