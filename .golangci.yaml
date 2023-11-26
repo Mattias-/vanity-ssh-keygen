@@ -1,0 +1,6 @@
+linters:
+  enable:
+    - gofmt
+    - gosec
+    - stylecheck
+    - misspell

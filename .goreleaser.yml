@@ -5,9 +5,6 @@ before:
     - go mod tidy
     - go mod download
 
-release:
-  disable: true
-
 builds:
   - main: ./cmd/vanity-ssh-keygen
     env:
@@ -61,7 +58,6 @@ snapshot:
   name_template: "{{ .Tag }}-next"
 
 changelog:
-  skip: true
   sort: asc
   filters:
     exclude:
