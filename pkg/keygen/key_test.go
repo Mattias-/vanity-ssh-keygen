@@ -9,7 +9,9 @@ import (
 )
 
 func TestSshAdd(t *testing.T) {
-	t.Skip()
+	if os.Getenv("CI") != "" {
+		t.Skip("Skipping testing in CI environment")
+	}
 	for _, v := range KeygenList() {
 		SSHAddCompatible(t, v())
 	}
