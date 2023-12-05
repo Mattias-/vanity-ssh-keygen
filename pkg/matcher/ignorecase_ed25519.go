@@ -27,5 +27,5 @@ func (m *ignorecaseEd25519Matcher) SetMatchString(matchString string) {
 
 func (m *ignorecaseEd25519Matcher) Match(s keygen.SSHKey) bool {
 	pubK := s.SSHPubkey()
-	return strings.Contains(strings.ToLower(string(pubK[:37])), m.matchString)
+	return strings.Contains(strings.ToLower(string(pubK[37:])), m.matchString)
 }
