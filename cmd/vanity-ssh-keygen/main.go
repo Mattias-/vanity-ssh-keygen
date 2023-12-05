@@ -57,7 +57,7 @@ type cli struct {
 	Threads          int              `short:"j" help:"Execution threads. Defaults to the number of logical CPU cores" default:"${default_threads}"`
 	Profile          bool             `help:"Profile the process. Write pprof CPU profile to ./pprof" default:"false"`
 	PyroscopeProfile bool             `help:"Profile the process and upload data to Pyroscope" default:"false"`
-	Metrics          bool             `help:"Enable metrics server." default:"true" negatable:""`
+	Metrics          bool             `help:"Enable metrics server." default:"false"`
 	Output           string           `short:"o" help:"Output format. One of: pem-files|json-file." default:"pem-files"`
 	OutputDir        string           `help:"Output directory." default:"./" type:"existingdir"`
 	StatsLogInterval time.Duration    `help:"Statistics will be printed at this interval, set to 0 to disable" default:"2s"`
@@ -170,7 +170,7 @@ func main() {
 		profiler, err := pyroscope.Start(pyroscope.Config{
 			Logger:          pyroscope.StandardLogger,
 			ApplicationName: serviceName,
-			//ServerAddress:     os.Getenv("PYROSCOPE_SERVER"),
+			// ServerAddress:     os.Getenv("PYROSCOPE_SERVER"),
 			BasicAuthUser:     os.Getenv("GRAFANA_INSTANCE_ID"),
 			BasicAuthPassword: os.Getenv("TOKEN"),
 			Tags: map[string]string{
@@ -230,8 +230,8 @@ func outputKey(c cli, elapsed time.Duration, result keygen.SSHKey) {
 	if c.Output == "pem-files" {
 		privkeyFileName := outDir + c.MatchString
 		pubkeyFileName := outDir + c.MatchString + ".pub"
-		_ = os.WriteFile(privkeyFileName, privK, 0600)
-		_ = os.WriteFile(pubkeyFileName, pubK, 0600)
+		_ = os.WriteFile(privkeyFileName, privK, 0o600)
+		_ = os.WriteFile(pubkeyFileName, pubK, 0o600)
 		slog.Info("Result keypair stored", "privkey_file", privkeyFileName, "pubkey_file", pubkeyFileName)
 	} else if c.Output == "json-file" {
 		file, _ := json.MarshalIndent(OutputData{
@@ -243,7 +243,7 @@ func outputKey(c cli, elapsed time.Duration, result keygen.SSHKey) {
 			},
 		}, "", " ")
 		jsonFileName := outDir + "result.json"
-		_ = os.WriteFile(jsonFileName, file, 0600)
+		_ = os.WriteFile(jsonFileName, file, 0o600)
 		slog.Info("Result keypair stored", "json_file", jsonFileName)
 	}
 }
