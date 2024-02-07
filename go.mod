@@ -6,9 +6,9 @@ require (
 	github.com/alecthomas/kong v0.8.1
 	github.com/google/uuid v1.6.0
 	github.com/grafana/pyroscope-go v1.1.1
-	go.opentelemetry.io/otel v1.22.0
+	go.opentelemetry.io/otel v1.23.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v0.45.0
-	go.opentelemetry.io/otel/metric v1.22.0
+	go.opentelemetry.io/otel/metric v1.23.0
 	go.opentelemetry.io/otel/sdk v1.22.0
 	go.opentelemetry.io/otel/sdk/metric v1.22.0
 	golang.org/x/crypto v0.18.0
@@ -22,7 +22,7 @@ require (
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.6 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
 	github.com/klauspost/compress v1.17.3 // indirect
-	go.opentelemetry.io/otel/trace v1.22.0 // indirect
+	go.opentelemetry.io/otel/trace v1.23.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.0.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
