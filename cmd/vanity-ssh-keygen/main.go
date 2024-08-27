@@ -216,7 +216,7 @@ func main() {
 func printStats(wps *workerpool.WorkerPoolStats) {
 	slog.Info("Tested keys",
 		slog.Duration("time", wps.Elapsed),
-		slog.Uint64("tested", wps.Count),
+		slog.Int64("tested", wps.Count),
 		slog.Float64("kKeys/s", float64(wps.Count)/wps.Elapsed.Seconds()/1000),
 	)
 }

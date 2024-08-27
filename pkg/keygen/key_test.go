@@ -24,7 +24,7 @@ func SSHAddCompatible(t *testing.T, k SSHKey) {
 	pk := k.SSHPrivkey()
 
 	keyfile := t.TempDir() + "/k"
-	err := os.WriteFile(keyfile, pk, 0600)
+	err := os.WriteFile(keyfile, pk, 0o600)
 	if err != nil {
 		t.Fatal(err)
 	}

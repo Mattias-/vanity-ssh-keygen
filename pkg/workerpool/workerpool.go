@@ -11,7 +11,7 @@ import (
 
 type Worker[R any] interface {
 	Run()
-	Count() uint64
+	Count() int64
 	SetResultChan(R)
 }
 
@@ -23,7 +23,7 @@ type WorkerPool[R any] struct {
 
 type WorkerPoolStats struct {
 	Workers int
-	Count   uint64
+	Count   int64
 	Elapsed time.Duration
 }
 
@@ -37,7 +37,7 @@ func (wp *WorkerPool[R]) Start() {
 }
 
 func (wp *WorkerPool[R]) RegisterCounter() {
-	var meter = otel.Meter("keygen")
+	meter := otel.Meter("keygen")
 	_, err := meter.Int64ObservableCounter(
 		"keys.generated",
 		metric.WithDescription("Keys generated"),
@@ -57,7 +57,7 @@ func (wp *WorkerPool[R]) RegisterCounter() {
 }
 
 func (wp *WorkerPool[R]) GetStats() *WorkerPoolStats {
-	var sum uint64
+	var sum int64
 	for _, w := range wp.Workers {
 		sum += w.Count()
 	}

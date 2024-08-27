@@ -6,7 +6,7 @@ import (
 
 type Kgworker struct {
 	results chan keygen.SSHKey
-	count   uint64
+	count   int64
 
 	Matchfunc func(keygen.SSHKey) bool
 	Keyfunc   func() keygen.SSHKey
@@ -25,7 +25,7 @@ func (w *Kgworker) Run() {
 	w.results <- k
 }
 
-func (w *Kgworker) Count() uint64 {
+func (w *Kgworker) Count() int64 {
 	return w.count
 }
 
