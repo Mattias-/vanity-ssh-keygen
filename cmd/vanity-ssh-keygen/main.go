@@ -17,8 +17,12 @@ import (
 	"github.com/alecthomas/kong"
 	"github.com/google/uuid"
 	"github.com/grafana/pyroscope-go"
+	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	"go.opentelemetry.io/otel/log/global"
+	"go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
@@ -58,6 +62,7 @@ type cli struct {
 	Profile          bool             `help:"Profile the process. Write pprof CPU profile to ./pprof" default:"false"`
 	PyroscopeProfile bool             `help:"Profile the process and upload data to Pyroscope" default:"false"`
 	Metrics          bool             `help:"Enable metrics server." default:"false"`
+	OtelLogs         bool             `help:"Enable otel logs." default:"false"`
 	Output           string           `short:"o" help:"Output format. One of: pem-files|json-file." default:"pem-files"`
 	OutputDir        string           `help:"Output directory." default:"./" type:"existingdir"`
 	StatsLogInterval time.Duration    `help:"Statistics will be printed at this interval, set to 0 to disable" default:"2s"`
@@ -143,6 +148,24 @@ func main() {
 		)
 
 		otel.SetMeterProvider(provider)
+
+	}
+	if c.OtelLogs {
+		logExporter, err := otlploghttp.New(ctx)
+		if err != nil {
+			panic(err)
+		}
+
+		loggerProvider := log.NewLoggerProvider(
+			log.WithProcessor(
+				log.NewBatchProcessor(logExporter),
+			))
+		//shutdownFuncs = append(shutdownFuncs, loggerProvider.Shutdown)
+		global.SetLoggerProvider(loggerProvider)
+		slog.SetDefault(otelslog.NewLogger(serviceName,
+			otelslog.WithSchemaURL(semconv.SchemaURL),
+			otelslog.WithVersion(version),
+		))
 	}
 
 	if c.Profile {

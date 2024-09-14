@@ -8,10 +8,14 @@ require (
 	github.com/alecthomas/kong v1.2.1
 	github.com/google/uuid v1.6.0
 	github.com/grafana/pyroscope-go v1.2.0
+	go.opentelemetry.io/contrib/bridges/otelslog v0.5.0
 	go.opentelemetry.io/otel v1.30.0
+	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.6.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.30.0
+	go.opentelemetry.io/otel/log v0.6.0
 	go.opentelemetry.io/otel/metric v1.30.0
 	go.opentelemetry.io/otel/sdk v1.30.0
+	go.opentelemetry.io/otel/sdk/log v0.6.0
 	go.opentelemetry.io/otel/sdk/metric v1.30.0
 	golang.org/x/crypto v0.27.0
 )
