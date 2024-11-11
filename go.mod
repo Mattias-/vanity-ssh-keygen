@@ -14,9 +14,9 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.31.0
 	go.opentelemetry.io/otel/log v0.8.0
 	go.opentelemetry.io/otel/metric v1.32.0
-	go.opentelemetry.io/otel/sdk v1.31.0
+	go.opentelemetry.io/otel/sdk v1.32.0
 	go.opentelemetry.io/otel/sdk/log v0.7.0
-	go.opentelemetry.io/otel/sdk/metric v1.31.0
+	go.opentelemetry.io/otel/sdk/metric v1.32.0
 	golang.org/x/crypto v0.29.0
 )
 
