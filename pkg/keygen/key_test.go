@@ -18,8 +18,6 @@ func TestSshAdd(t *testing.T) {
 }
 
 func SSHAddCompatible(t *testing.T, k SSHKey) {
-	t.Helper()
-
 	k.New()
 	pk := k.SSHPrivkey()
 
@@ -29,17 +27,18 @@ func SSHAddCompatible(t *testing.T, k SSHKey) {
 		t.Fatal(err)
 	}
 
-	out, err := exec.Command("ssh-add", keyfile).CombinedOutput()
-	t.Logf("%s", out)
-	var eerr *exec.ExitError
-	if errors.As(err, &eerr) {
-		t.Logf("Exit code: %d", eerr.ExitCode())
-	}
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !strings.HasPrefix(string(out), "Identity added:") {
-		t.Fail()
+	{
+		out, err := exec.Command("ssh-add", "-t", "1", keyfile).CombinedOutput()
+		t.Logf("%s", out)
+		var eerr *exec.ExitError
+		if errors.As(err, &eerr) {
+			t.Logf("Exit code: %d", eerr.ExitCode())
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.HasPrefix(string(out), "Identity added:") {
+			t.Fail()
+		}
 	}
 }
