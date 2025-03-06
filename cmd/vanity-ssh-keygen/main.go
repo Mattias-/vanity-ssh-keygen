@@ -29,8 +29,11 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
 
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen"
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen/ed25519"
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen/rsa"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/matcher"
-	"github.com/Mattias-/vanity-ssh-keygen/pkg/worker"
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/matcher/ignorecase"
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/matcher/ignorecaseed25519"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/workerpool"
 )
 
@@ -70,17 +73,20 @@ type cli struct {
 }
 
 func main() {
-	ml := matcher.MatcherList()
-	kl := keygen.KeygenList()
+	matcher.RegisterMatcher("ignorecase", ignorecase.New())
+	matcher.RegisterMatcher("ignorecase-ed25519", ignorecaseed25519.New())
+	keygen.RegisterKeygen("ed25519", func() keygen.SSHKey { return ed25519.New() })
+	keygen.RegisterKeygen("rsa-2048", func() keygen.SSHKey { return rsa.New(2048) })
+	keygen.RegisterKeygen("rsa-4096", func() keygen.SSHKey { return rsa.New(4096) })
 
 	c := cli{}
 	kongctx := kong.Parse(&c, kong.Vars{
 		"version":         versionString(),
 		"default_threads": fmt.Sprintf("%d", runtime.NumCPU()),
-		"keytypes":        strings.Join(kl.Names(), ","),
-		"default_keytype": kl.Names()[0],
-		"matchers":        strings.Join(ml.Names(), ","),
-		"default_matcher": ml.Names()[0],
+		"keytypes":        strings.Join(keygen.Names(), ","),
+		"default_keytype": keygen.Names()[0],
+		"matchers":        strings.Join(matcher.Names(), ","),
+		"default_matcher": matcher.Names()[0],
 	})
 
 	ctx, stop := signal.NotifyContext(context.Background(),
@@ -209,15 +215,15 @@ func main() {
 		kongctx.Exit(1)
 	}()
 
-	m, err := ml.Get(c.Matcher)
-	if err != nil {
-		slog.Error("Invalid matcher", "error", err)
+	m, ok := matcher.Get(c.Matcher)
+	if !ok {
+		slog.Error("Invalid matcher")
 		os.Exit(1)
 	}
 	m.SetMatchString(c.MatchString)
-	k, ok := kl.Get(c.KeyType)
+	k, ok := keygen.Get(c.KeyType)
 	if !ok {
-		slog.Error("Invalid key type", "error", err)
+		slog.Error("Invalid key type")
 		os.Exit(1)
 	}
 	runKeygen(c, m, k)
@@ -229,7 +235,7 @@ func main() {
 func runKeygen(c cli, matcher matcher.Matcher, kg keygen.Keygen) {
 	var workers []workerpool.Worker[chan keygen.SSHKey]
 	for i := 0; i < c.Threads; i++ {
-		w := &worker.Kgworker{
+		w := &keygen.Worker{
 			Matchfunc: matcher.Match,
 			Keyfunc:   kg,
 		}

@@ -1,4 +1,4 @@
-package matcher
+package ignorecase
 
 import (
 	"strings"
@@ -7,18 +7,11 @@ import (
 )
 
 type ignorecaseMatcher struct {
-	name        string
 	matchString string
 }
 
-func NewIgnorecaseMatcher() *ignorecaseMatcher {
-	return &ignorecaseMatcher{
-		name: "ignorecase",
-	}
-}
-
-func (m *ignorecaseMatcher) Name() string {
-	return m.name
+func New() *ignorecaseMatcher {
+	return &ignorecaseMatcher{}
 }
 
 func (m *ignorecaseMatcher) SetMatchString(matchString string) {

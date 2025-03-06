@@ -1,2 +1,5 @@
 /vanity-ssh-keygen
 dist/
+run.sh
+pprof
+/mat*

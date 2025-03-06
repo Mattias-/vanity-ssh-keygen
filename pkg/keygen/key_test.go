@@ -6,19 +6,34 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen/ed25519"
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen/rsa"
 )
 
-func TestSshAdd(t *testing.T) {
+func TestSshAdd_RSA2048(t *testing.T) {
 	if os.Getenv("CI") != "" {
 		t.Skip("Skipping testing in CI environment")
 	}
-	for _, v := range KeygenList() {
-		SSHAddCompatible(t, v.f())
+	SSHAddCompatible(t, rsa.New(2048))
+}
+
+func TestSshAdd_RSA4096(t *testing.T) {
+	if os.Getenv("CI") != "" {
+		t.Skip("Skipping testing in CI environment")
 	}
+	SSHAddCompatible(t, rsa.New(4096))
+}
+
+func TestSshAdd_ED25519(t *testing.T) {
+	if os.Getenv("CI") != "" {
+		t.Skip("Skipping testing in CI environment")
+	}
+	SSHAddCompatible(t, ed25519.New())
 }
 
 func SSHAddCompatible(t *testing.T, k SSHKey) {
-	k.New()
+	k.Generate()
 	pk := k.SSHPrivkey()
 
 	keyfile := t.TempDir() + "/k"

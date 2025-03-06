@@ -1,4 +1,4 @@
-package matcher
+package ignorecaseed25519
 
 import (
 	"strings"
@@ -7,18 +7,11 @@ import (
 )
 
 type ignorecaseEd25519Matcher struct {
-	name        string
 	matchString string
 }
 
-func NewIgnorecaseEd25519Matcher() *ignorecaseEd25519Matcher {
-	return &ignorecaseEd25519Matcher{
-		name: "ignorecase-ed25519",
-	}
-}
-
-func (m *ignorecaseEd25519Matcher) Name() string {
-	return m.name
+func New() *ignorecaseEd25519Matcher {
+	return &ignorecaseEd25519Matcher{}
 }
 
 func (m *ignorecaseEd25519Matcher) SetMatchString(matchString string) {

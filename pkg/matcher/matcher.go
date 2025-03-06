@@ -1,39 +1,29 @@
 package matcher
 
 import (
-	"errors"
-
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen"
 )
 
 type Matcher interface {
-	Name() string
 	SetMatchString(string)
 	Match(keygen.SSHKey) bool
 }
 
-func MatcherList() mli {
-	return []Matcher{
-		NewIgnorecaseMatcher(),
-		NewIgnorecaseEd25519Matcher(),
-	}
+var matchers = map[string]Matcher{}
+
+func RegisterMatcher(name string, m Matcher) {
+	matchers[name] = m
 }
 
-type mli []Matcher
-
-func (ml mli) Names() []string {
-	var ms []string
-	for _, m := range ml {
-		ms = append(ms, m.Name())
+func Names() []string {
+	keys := make([]string, 0, len(matchers))
+	for k := range matchers {
+		keys = append(keys, k)
 	}
-	return ms
+	return keys
 }
 
-func (ml mli) Get(name string) (Matcher, error) {
-	for _, m := range ml {
-		if name == m.Name() {
-			return m, nil
-		}
-	}
-	return nil, errors.New("unknown item")
+func Get(name string) (Matcher, bool) {
+	m, ok := matchers[name]
+	return m, ok
 }

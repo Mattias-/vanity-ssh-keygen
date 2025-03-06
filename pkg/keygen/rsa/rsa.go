@@ -14,11 +14,11 @@ type localRsa struct {
 	bitSize    int
 }
 
-func Init(bits int) *localRsa {
+func New(bits int) *localRsa {
 	return &localRsa{bitSize: bits}
 }
 
-func (s *localRsa) New() {
+func (s *localRsa) Generate() {
 	s.privateKey, _ = rsa.GenerateKey(rand.Reader, s.bitSize)
 }
 
