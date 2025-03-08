@@ -8,21 +8,30 @@ type SSHKey interface {
 
 type Keygen func() SSHKey
 
-var keygens = map[string]Keygen{}
+type namedKeygen struct {
+	name   string
+	keygen Keygen
+}
+
+var keygens = []namedKeygen{}
 
 func RegisterKeygen(name string, k Keygen) {
-	keygens[name] = k
+	keygens = append(keygens, namedKeygen{name, k})
 }
 
 func Names() []string {
-	keys := make([]string, 0, len(keygens))
-	for k := range keygens {
-		keys = append(keys, k)
+	names := make([]string, 0, len(keygens))
+	for _, k := range keygens {
+		names = append(names, k.name)
 	}
-	return keys
+	return names
 }
 
 func Get(name string) (Keygen, bool) {
-	k, ok := keygens[name]
-	return k, ok
+	for _, k := range keygens {
+		if k.name == name {
+			return k.keygen, true
+		}
+	}
+	return nil, false
 }

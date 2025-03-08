@@ -9,21 +9,30 @@ type Matcher interface {
 	Match(keygen.SSHKey) bool
 }
 
-var matchers = map[string]Matcher{}
+type namedMatcher struct {
+	name    string
+	matcher Matcher
+}
+
+var matchers = []namedMatcher{}
 
 func RegisterMatcher(name string, m Matcher) {
-	matchers[name] = m
+	matchers = append(matchers, namedMatcher{name, m})
 }
 
 func Names() []string {
-	keys := make([]string, 0, len(matchers))
-	for k := range matchers {
-		keys = append(keys, k)
+	names := make([]string, 0, len(matchers))
+	for _, k := range matchers {
+		names = append(names, k.name)
 	}
-	return keys
+	return names
 }
 
 func Get(name string) (Matcher, bool) {
-	m, ok := matchers[name]
-	return m, ok
+	for _, m := range matchers {
+		if m.name == name {
+			return m.matcher, true
+		}
+	}
+	return nil, false
 }
