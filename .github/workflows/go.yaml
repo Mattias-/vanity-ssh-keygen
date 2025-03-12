@@ -19,9 +19,8 @@ jobs:
 
       - name: Debug GH
         env:
-
           REV_BEFORE: ${{ github.event.pull_request.base.sha || github.base_ref }}
-          BEFORE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          BEFORE_SHA: ${{ github.event.pull_request.base.sha || github.base_ref || github.event.before }}
           AFTER_SHA: ${{ github.sha }}
           GITHUB_CONTEXT: ${{ toJson(github) }}
         run: env
