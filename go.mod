@@ -7,7 +7,7 @@ toolchain go1.23.6
 require (
 	github.com/alecthomas/kong v1.9.0
 	github.com/google/uuid v1.6.0
-	github.com/grafana/pyroscope-go v1.2.0
+	github.com/grafana/pyroscope-go v1.2.1
 	go.opentelemetry.io/contrib/bridges/otelslog v0.10.0
 	go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.11.0
