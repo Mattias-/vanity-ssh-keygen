@@ -2,10 +2,10 @@ module github.com/Mattias-/vanity-ssh-keygen
 
 go 1.23.0
 
-toolchain go1.23.6
+toolchain go1.24.1
 
 require (
-	github.com/alecthomas/kong v1.9.0
+	github.com/alecthomas/kong v1.10.0
 	github.com/google/uuid v1.6.0
 	github.com/grafana/pyroscope-go v1.2.1
 	go.opentelemetry.io/contrib/bridges/otelslog v0.10.0
