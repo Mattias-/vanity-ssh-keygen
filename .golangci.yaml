@@ -1,7 +1,10 @@
+version: "2"
 linters:
+  enable:
+    - gosec
+    - misspell
+    - staticcheck
+formatters:
   enable:
     - gofmt
     - gofumpt
-    - gosec
-    - stylecheck
-    - misspell

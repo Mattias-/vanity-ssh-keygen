@@ -43,6 +43,7 @@ func SSHAddCompatible(t *testing.T, k SSHKey) {
 	}
 
 	{
+		// #nosec G204
 		out, err := exec.Command("ssh-add", "-t", "1", keyfile).CombinedOutput()
 		t.Logf("%s", out)
 		var eerr *exec.ExitError

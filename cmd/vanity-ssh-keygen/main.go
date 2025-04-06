@@ -277,13 +277,14 @@ func outputKey(c cli, elapsed time.Duration, result keygen.SSHKey) {
 	slog.Info("Found matching public key", "pubkey", string(pubK))
 
 	outDir := c.OutputDir + "/"
-	if c.Output == "pem-files" {
+	switch c.Output {
+	case "pem-files":
 		privkeyFileName := outDir + c.MatchString
 		pubkeyFileName := outDir + c.MatchString + ".pub"
 		_ = os.WriteFile(privkeyFileName, privK, 0o600)
 		_ = os.WriteFile(pubkeyFileName, pubK, 0o600)
 		slog.Info("Result keypair stored", "privkey_file", privkeyFileName, "pubkey_file", pubkeyFileName)
-	} else if c.Output == "json-file" {
+	case "json-file":
 		file, _ := json.MarshalIndent(OutputData{
 			PublicKey:  string(pubK),
 			PrivateKey: string(privK),
@@ -295,6 +296,8 @@ func outputKey(c cli, elapsed time.Duration, result keygen.SSHKey) {
 		jsonFileName := outDir + "result.json"
 		_ = os.WriteFile(jsonFileName, file, 0o600)
 		slog.Info("Result keypair stored", "json_file", jsonFileName)
+	default:
+		slog.Error("Invalid output format", "output", c.Output)
 	}
 }
 
