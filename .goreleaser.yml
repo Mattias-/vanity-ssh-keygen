@@ -39,6 +39,15 @@ kos:
       - linux/amd64
       - linux/arm64
 
+docker_signs:
+  - cmd: cosign
+    artifacts: images
+    output: true
+    args:
+      - "sign"
+      - "${artifact}"
+      - "--yes"
+
 sboms:
   - artifacts: archive
 
@@ -47,7 +56,7 @@ archives:
       - binary
 
 checksum:
-  name_template: "sha256sums.txt"
+  name_template: "checksums.txt"
   algorithm: sha256
 
 snapshot:
