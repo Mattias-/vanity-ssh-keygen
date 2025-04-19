@@ -26,7 +26,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.27.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen/ed25519"
@@ -57,8 +57,9 @@ type OutputData struct {
 	Metadata   Metadata `json:"metadata"`
 }
 
-type cli struct {
+type config struct {
 	Version          kong.VersionFlag `help:"Print version and exit"`
+	Debug            bool             `help:"Enable debug logging" default:"false"`
 	MatchString      string           `arg:""`
 	Matcher          string           `help:"Matcher used to find a vanity SSH key. One of: ${matchers}" default:"${default_matcher}" enum:"${matchers}"`
 	KeyType          string           `short:"t" help:"Key type to generate. One of: ${keytypes}" enum:"${keytypes}" default:"${default_keytype}"`
@@ -72,6 +73,33 @@ type cli struct {
 	StatsLogInterval time.Duration    `help:"Statistics will be printed at this interval, set to 0 to disable" default:"2s"`
 }
 
+type app struct {
+	config        config
+	shutdownFuncs []func(context.Context) error
+}
+
+type resultSink = func(elapsed time.Duration, result keygen.SSHKey)
+
+func (a *app) shutdownAll() {
+	slog.Debug("Shutting down", "funcs", len(a.shutdownFuncs))
+
+	// Call shutdown functions with a new context with timeout.
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var err error
+	for _, fn := range a.shutdownFuncs {
+		err = errors.Join(err, fn(shutdownCtx))
+	}
+	if err != nil {
+		slog.Error("Error shutting down", "error", err)
+		os.Exit(1)
+	}
+}
+
+func (a *app) addShutdownFunc(fn func(context.Context) error) {
+	a.shutdownFuncs = append(a.shutdownFuncs, fn)
+}
+
 func main() {
 	matcher.RegisterMatcher("ignorecase", ignorecase.New())
 	matcher.RegisterMatcher("ignorecase-ed25519", ignorecaseed25519.New())
@@ -79,8 +107,8 @@ func main() {
 	keygen.RegisterKeygen("rsa-2048", func() keygen.SSHKey { return rsa.New(2048) })
 	keygen.RegisterKeygen("rsa-4096", func() keygen.SSHKey { return rsa.New(4096) })
 
-	c := cli{}
-	kongctx := kong.Parse(&c, kong.Vars{
+	var a app
+	_ = kong.Parse(&a.config, kong.Vars{
 		"version":         versionString(),
 		"default_threads": fmt.Sprintf("%d", runtime.NumCPU()),
 		"keytypes":        strings.Join(keygen.Names(), ","),
@@ -95,9 +123,13 @@ func main() {
 		syscall.SIGTERM,
 	)
 
-	shutdownFuncs := []func(context.Context) error{}
+	a.addShutdownFunc(func(ctx context.Context) error {
+		slog.Debug("Stopping signal handler")
+		stop()
+		return nil
+	})
 
-	if c.Metrics {
+	if a.config.Metrics {
 		exporter, err := otlpmetrichttp.New(ctx)
 		if err != nil {
 			slog.Error("Could not create metric exporter", "error", err)
@@ -117,47 +149,53 @@ func main() {
 			metric.WithReader(metric.NewPeriodicReader(exporter)),
 			metric.WithResource(resource),
 		)
+		otel.SetMeterProvider(provider)
 
-		shutdownFuncs = append(shutdownFuncs, func(ctx context.Context) error {
-			slog.Info("Shutting down metric provider")
+		a.addShutdownFunc(func(ctx context.Context) error {
+			slog.Debug("Shutting down metric provider")
 			if err := provider.Shutdown(ctx); err != nil {
 				return fmt.Errorf("failed to stop metric provider: %w", err)
 			}
 			return nil
 		})
-
-		otel.SetMeterProvider(provider)
 	}
 
-	if c.OtelLogs {
+	logLevel := slog.LevelInfo
+	if a.config.Debug {
+		logLevel = slog.LevelDebug
+	}
+	if a.config.OtelLogs {
 		exporter, err := otlploghttp.New(ctx)
 		if err != nil {
-			panic(err)
+			slog.Error("Could not create log exporter", "error", err)
+			os.Exit(1)
 		}
-
 		provider := log.NewLoggerProvider(
 			log.WithProcessor(
 				log.NewBatchProcessor(exporter),
 			))
-
-		shutdownFuncs = append(shutdownFuncs, func(ctx context.Context) error {
-			slog.Info("Shutting down logger provider")
-			if err := provider.Shutdown(ctx); err != nil {
-				return fmt.Errorf("failed to stop logger provider: %w", err)
-			}
-			return nil
-		})
-
 		global.SetLoggerProvider(provider)
-
 		slog.SetDefault(otelslog.NewLogger(serviceName,
 			otelslog.WithSchemaURL(semconv.SchemaURL),
 			otelslog.WithVersion(version),
 		))
 
+		a.addShutdownFunc(func(ctx context.Context) error {
+			slog.Debug("Shutting down logger provider")
+			if err := provider.Shutdown(ctx); err != nil {
+				return fmt.Errorf("failed to stop logger provider: %w", err)
+			}
+			return nil
+		})
+	} else {
+		slog.SetDefault(
+			slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+				Level: logLevel,
+			})),
+		)
 	}
 
-	if c.Profile {
+	if a.config.Profile {
 		f, err := os.Create("./pprof")
 		if err != nil {
 			slog.Error("Could not create profile file", "error", err)
@@ -168,25 +206,31 @@ func main() {
 			os.Exit(1)
 		}
 
-		shutdownFuncs = append(shutdownFuncs, func(_ context.Context) error {
-			slog.Info("Stopping CPU profile")
+		a.addShutdownFunc(func(_ context.Context) error {
+			slog.Debug("Stopping CPU profile")
 			pprof.StopCPUProfile()
 			return nil
 		})
-
 	}
 
-	if c.PyroscopeProfile {
+	if a.config.PyroscopeProfile {
 		profiler, err := pyroscope.Start(pyroscope.Config{
-			Logger:          pyroscope.StandardLogger,
+			Logger: func() pyroscope.Logger {
+				if a.config.Debug {
+					return pyroscope.StandardLogger
+				}
+				return nil
+			}(),
 			ApplicationName: serviceName,
 			// ServerAddress:     os.Getenv("PYROSCOPE_SERVER"),
 			BasicAuthUser:     os.Getenv("GRAFANA_INSTANCE_ID"),
 			BasicAuthPassword: os.Getenv("TOKEN"),
 			Tags: map[string]string{
-				"instanceID": instanceID,
-				"platform":   fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
-				"cpus":       fmt.Sprintf("%d", runtime.NumCPU()),
+				"instanceID":         instanceID,
+				"platform":           fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+				"cpus":               fmt.Sprintf("%d", runtime.NumCPU()),
+				"service_git_ref":    fmt.Sprintf("v%s", version),
+				"service_repository": "https://github.com/Mattias-/vanity-ssh-keygen",
 			},
 		})
 		if err != nil {
@@ -194,64 +238,62 @@ func main() {
 			os.Exit(1)
 		}
 
-		shutdownFuncs = append(shutdownFuncs, func(_ context.Context) error {
-			slog.Info("Stopping profiler")
+		a.addShutdownFunc(func(_ context.Context) error {
+			slog.Debug("Stopping profiler")
 			return profiler.Stop()
 		})
 	}
 
-	go func() {
-		<-ctx.Done()
-		slog.Info("Shutting down", "funcs", len(shutdownFuncs))
-
-		// Call shutdown functions with a new context with timeout.
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		var err error
-		for _, fn := range shutdownFuncs {
-			err = errors.Join(err, fn(shutdownCtx))
-		}
-		fmt.Printf("err: %v\n", err)
-		kongctx.Exit(1)
-	}()
-
-	m, ok := matcher.Get(c.Matcher)
+	m, ok := matcher.Get(a.config.Matcher)
 	if !ok {
 		slog.Error("Invalid matcher")
 		os.Exit(1)
 	}
-	m.SetMatchString(c.MatchString)
-	k, ok := keygen.Get(c.KeyType)
+	m.SetMatchString(a.config.MatchString)
+	k, ok := keygen.Get(a.config.KeyType)
 	if !ok {
 		slog.Error("Invalid key type")
 		os.Exit(1)
 	}
-	runKeygen(c, m, k)
 
-	stop()
-	kongctx.Exit(0)
+	var outputter resultSink
+	switch a.config.Output {
+	case "pem-files":
+		outputter = a.outputPEM
+	case "json-file":
+		outputter = a.outputJSON
+	default:
+		slog.Error("Invalid output format", "output", a.config.Output)
+	}
+
+	go func() {
+		<-ctx.Done()
+		a.shutdownAll()
+		os.Exit(1)
+	}()
+	a.runKeygen(m, k, outputter)
+	a.shutdownAll()
+	os.Exit(0)
 }
 
-func runKeygen(c cli, matcher matcher.Matcher, kg keygen.Keygen) {
-	var workers []workerpool.Worker[chan keygen.SSHKey]
-	for i := 0; i < c.Threads; i++ {
-		w := &keygen.Worker{
-			Matchfunc: matcher.Match,
-			Keyfunc:   kg,
-		}
-		workers = append(workers, w)
-	}
+func (a *app) runKeygen(matcher matcher.Matcher, kg keygen.Keygen, outputter resultSink) {
 	wp := workerpool.WorkerPool[chan keygen.SSHKey]{
-		Workers: workers,
+		Workers: make([]workerpool.Worker[chan keygen.SSHKey], 0, a.config.Threads),
 		Results: make(chan keygen.SSHKey),
 	}
+	for range a.config.Threads {
+		wp.Workers = append(wp.Workers, &keygen.Worker{
+			Matchfunc: matcher.Match,
+			Keyfunc:   kg,
+		})
+	}
 
-	if c.StatsLogInterval != 0 {
-		ticker := time.NewTicker(c.StatsLogInterval)
+	if a.config.StatsLogInterval != 0 {
+		ticker := time.NewTicker(a.config.StatsLogInterval)
 		defer ticker.Stop()
 		go func() {
 			for range ticker.C {
-				printStats(wp.GetStats())
+				wp.GetStats().Log()
 			}
 		}()
 	}
@@ -259,46 +301,45 @@ func runKeygen(c cli, matcher matcher.Matcher, kg keygen.Keygen) {
 	wp.Start()
 	result := <-wp.Results
 	wps := wp.GetStats()
-	printStats(wps)
-	outputKey(c, wps.Elapsed, result)
+	wps.Log()
+
+	outputter(wps.Elapsed, result)
 }
 
-func printStats(wps *workerpool.WorkerPoolStats) {
-	slog.Info("Tested keys",
-		slog.Duration("time", wps.Elapsed),
-		slog.Int64("tested", wps.Count),
-		slog.Float64("kKeys/s", float64(wps.Count)/wps.Elapsed.Seconds()/1000),
-	)
-}
-
-func outputKey(c cli, elapsed time.Duration, result keygen.SSHKey) {
+func (a *app) outputPEM(elapsed time.Duration, result keygen.SSHKey) {
 	privK := result.SSHPrivkey()
 	pubK := result.SSHPubkey()
 	slog.Info("Found matching public key", "pubkey", string(pubK))
+	outDir := a.config.OutputDir + "/"
 
-	outDir := c.OutputDir + "/"
-	switch c.Output {
-	case "pem-files":
-		privkeyFileName := outDir + c.MatchString
-		pubkeyFileName := outDir + c.MatchString + ".pub"
-		_ = os.WriteFile(privkeyFileName, privK, 0o600)
-		_ = os.WriteFile(pubkeyFileName, pubK, 0o600)
-		slog.Info("Result keypair stored", "privkey_file", privkeyFileName, "pubkey_file", pubkeyFileName)
-	case "json-file":
-		file, _ := json.MarshalIndent(OutputData{
-			PublicKey:  string(pubK),
-			PrivateKey: string(privK),
-			Metadata: Metadata{
-				FindString: c.MatchString,
-				Time:       int64(elapsed / time.Second),
-			},
-		}, "", " ")
-		jsonFileName := outDir + "result.json"
-		_ = os.WriteFile(jsonFileName, file, 0o600)
-		slog.Info("Result keypair stored", "json_file", jsonFileName)
-	default:
-		slog.Error("Invalid output format", "output", c.Output)
-	}
+	privkeyFileName := outDir + a.config.MatchString
+	pubkeyFileName := outDir + a.config.MatchString + ".pub"
+	_ = os.WriteFile(privkeyFileName, privK, 0o600)
+	_ = os.WriteFile(pubkeyFileName, pubK, 0o600)
+	slog.Info("Result keypair stored",
+		"privkey_file", privkeyFileName,
+		"pubkey_file", pubkeyFileName,
+		slog.Duration("elapsed", elapsed),
+	)
+}
+
+func (a *app) outputJSON(elapsed time.Duration, result keygen.SSHKey) {
+	privK := result.SSHPrivkey()
+	pubK := result.SSHPubkey()
+	slog.Info("Found matching public key", "pubkey", string(pubK))
+	outDir := a.config.OutputDir + "/"
+
+	file, _ := json.MarshalIndent(OutputData{
+		PublicKey:  string(pubK),
+		PrivateKey: string(privK),
+		Metadata: Metadata{
+			FindString: a.config.MatchString,
+			Time:       int64(elapsed / time.Second),
+		},
+	}, "", " ")
+	jsonFileName := outDir + "result.json"
+	_ = os.WriteFile(jsonFileName, file, 0o600)
+	slog.Info("Result keypair stored", "json_file", jsonFileName)
 }
 
 func versionString() string {

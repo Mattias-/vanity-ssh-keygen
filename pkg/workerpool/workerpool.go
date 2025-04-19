@@ -27,6 +27,14 @@ type WorkerPoolStats struct {
 	Elapsed time.Duration
 }
 
+func (wps WorkerPoolStats) Log() {
+	slog.Info("Tested keys",
+		slog.Duration("time", wps.Elapsed),
+		slog.Int64("tested", wps.Count),
+		slog.Float64("kKeys/s", float64(wps.Count)/wps.Elapsed.Seconds()/1000),
+	)
+}
+
 func (wp *WorkerPool[R]) Start() {
 	wp.RegisterCounter()
 	wp.start = time.Now()
