@@ -5,7 +5,7 @@ go 1.24
 toolchain go1.24.1
 
 require (
-	github.com/alecthomas/kong v1.10.0
+	github.com/alecthomas/kong v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/grafana/pyroscope-go v1.2.2
 	go.opentelemetry.io/contrib/bridges/otelslog v0.10.0
