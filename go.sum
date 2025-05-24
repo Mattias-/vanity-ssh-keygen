@@ -4,8 +4,6 @@ github.com/alecthomas/kong v1.11.0 h1:y++1gI7jf8O7G7l4LZo5ASFhrhJvzc+WgF/arranEm
 github.com/alecthomas/kong v1.11.0/go.mod h1:p2vqieVMeTAnaC83txKtXe8FLke2X07aruPWXyMPQrU=
 github.com/alecthomas/repr v0.4.0 h1:GhI2A8MACjfegCPVq9f1FLvIBS+DrQ2KQBFZP1iFzXc=
 github.com/alecthomas/repr v0.4.0/go.mod h1:Fr0507jx4eOXV7AlPV6AVZLYrLIuIeSOWtW57eE/O/4=
-github.com/cenkalti/backoff/v4 v4.3.0 h1:MyRJ/UdXutAwSAT+s3wNd7MfTIcy71VQueUuFK343L8=
-github.com/cenkalti/backoff/v4 v4.3.0/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyYozVcomhLiZE=
 github.com/cenkalti/backoff/v5 v5.0.2 h1:rIfFVxEf1QsI7E1ZHfp/B4DF/6QBAUhmgkxc0H7Zss8=
 github.com/cenkalti/backoff/v5 v5.0.2/go.mod h1:rkhZdG3JZukswDf7f0cwqPNk4K0sa+F97BxZthm/crw=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
@@ -43,8 +41,8 @@ go.opentelemetry.io/contrib/bridges/otelslog v0.11.0 h1:EMIiYTms4Z4m3bBuKp1VmMNR
 go.opentelemetry.io/contrib/bridges/otelslog v0.11.0/go.mod h1:DIEZmUR7tzuOOVUTDKvkGWtYWSHFV18Qg8+GMb8wPJw=
 go.opentelemetry.io/otel v1.36.0 h1:UumtzIklRBY6cI/lllNZlALOF5nNIzJVb16APdvgTXg=
 go.opentelemetry.io/otel v1.36.0/go.mod h1:/TcFMXYjyRNh8khOAO9ybYkqaDBb/70aVwkNML4pP8E=
-go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.11.0 h1:C/Wi2F8wEmbxJ9Kuzw/nhP+Z9XaHYMkyDmXy6yR2cjw=
-go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.11.0/go.mod h1:0Lr9vmGKzadCTgsiBydxr6GEZ8SsZ7Ks53LzjWG5Ar4=
+go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.12.2 h1:tPLwQlXbJ8NSOfZc4OkgU5h2A38M4c9kfHSVc4PFQGs=
+go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.12.2/go.mod h1:QTnxBwT/1rBIgAG1goq6xMydfYOBKU6KTiYF4fp5zL8=
 go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.36.0 h1:gAU726w9J8fwr4qRDqu1GYMNNs4gXrU+Pv20/N1UpB4=
 go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.36.0/go.mod h1:RboSDkp7N292rgu+T0MgVt2qgFGu6qa1RpZDOtpL76w=
 go.opentelemetry.io/otel/log v0.12.2 h1:yob9JVHn2ZY24byZeaXpTVoPS6l+UrrxmxmPKohXTwc=
