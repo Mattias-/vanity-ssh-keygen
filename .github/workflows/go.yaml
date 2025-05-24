@@ -38,6 +38,23 @@ jobs:
       - name: Test
         run: go test -v ./...
 
+      - name: Generate Readme
+        run: |
+          ./update-readme.sh
+          # If there's a diff in README.md then fail.
+          if ! git diff --exit-code README.md; then
+            echo "README.md is out of date. Please run ./update-readme.sh to update it."
+            exit 1
+          fi
+
+      - name: Smoke Test
+        # Run smoke test to ensure the binary works as expected.
+        timeout-minutes: 1
+        run: |
+          # Run with metrics to make sure semver version compatibility.
+          go run ./cmd/vanity-ssh-keygen --metrics x
+          grep -i x x.pub
+
       - name: Lint
         uses: golangci/golangci-lint-action@v8
         with:
