@@ -8,7 +8,7 @@ require (
 	github.com/alecthomas/kong v1.11.0
 	github.com/google/uuid v1.6.0
 	github.com/grafana/pyroscope-go v1.2.2
-	go.opentelemetry.io/contrib/bridges/otelslog v0.10.0
+	go.opentelemetry.io/contrib/bridges/otelslog v0.11.0
 	go.opentelemetry.io/otel v1.36.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.11.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.36.0
