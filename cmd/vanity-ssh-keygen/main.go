@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"runtime/pprof"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -92,7 +93,7 @@ func (a *app) shutdownAll() {
 	}
 	if err != nil {
 		slog.Error("Error shutting down", "error", err)
-		os.Exit(1)
+		// Not critical so still exit with code 0.
 	}
 }
 
@@ -107,10 +108,15 @@ func main() {
 	keygen.RegisterKeygen("rsa-2048", func() keygen.SSHKey { return rsa.New(2048) })
 	keygen.RegisterKeygen("rsa-4096", func() keygen.SSHKey { return rsa.New(4096) })
 
+	defaultThreads := runtime.NumCPU()
+	overrideThreads := os.Getenv("OVERRIDE_DEFAULT_THREADS")
+	if overrideThreads != "" {
+		defaultThreads, _ = strconv.Atoi(overrideThreads)
+	}
 	var a app
 	_ = kong.Parse(&a.config, kong.Vars{
 		"version":         versionString(),
-		"default_threads": fmt.Sprintf("%d", runtime.NumCPU()),
+		"default_threads": fmt.Sprintf("%d", defaultThreads),
 		"keytypes":        strings.Join(keygen.Names(), ","),
 		"default_keytype": keygen.Names()[0],
 		"matchers":        strings.Join(matcher.Names(), ","),
