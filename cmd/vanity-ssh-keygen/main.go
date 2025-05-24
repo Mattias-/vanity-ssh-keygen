@@ -92,7 +92,7 @@ func (a *app) shutdownAll() {
 	}
 	if err != nil {
 		slog.Error("Error shutting down", "error", err)
-		os.Exit(1)
+		// Not critical so still exit with code 0.
 	}
 }
 
