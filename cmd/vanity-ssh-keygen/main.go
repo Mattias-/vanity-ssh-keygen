@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"runtime/pprof"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -92,7 +93,7 @@ func (a *app) shutdownAll() {
 	}
 	if err != nil {
 		slog.Error("Error shutting down", "error", err)
-		os.Exit(1)
+		// Not critical so still exit with code 0.
 	}
 }
 
@@ -107,10 +108,15 @@ func main() {
 	keygen.RegisterKeygen("rsa-2048", func() keygen.SSHKey { return rsa.New(2048) })
 	keygen.RegisterKeygen("rsa-4096", func() keygen.SSHKey { return rsa.New(4096) })
 
+	defaultThreads := runtime.NumCPU()
+	overrideThreads := os.Getenv("OVERRIDE_DEFAULT_THREADS")
+	if overrideThreads != "" {
+		defaultThreads, _ = strconv.Atoi(overrideThreads)
+	}
 	var a app
 	_ = kong.Parse(&a.config, kong.Vars{
 		"version":         versionString(),
-		"default_threads": fmt.Sprintf("%d", runtime.NumCPU()),
+		"default_threads": fmt.Sprintf("%d", defaultThreads),
 		"keytypes":        strings.Join(keygen.Names(), ","),
 		"default_keytype": keygen.Names()[0],
 		"matchers":        strings.Join(matcher.Names(), ","),
@@ -135,19 +141,14 @@ func main() {
 			slog.Error("Could not create metric exporter", "error", err)
 			os.Exit(1)
 		}
-		resource, err := resource.Merge(resource.Default(),
-			resource.NewWithAttributes(semconv.SchemaURL,
-				semconv.ServiceName(serviceName),
-				semconv.ServiceVersion(version),
-				semconv.ServiceInstanceID(instanceID),
-			))
-		if err != nil {
-			slog.Error("Could not crete metric resources", "error", err)
-			os.Exit(1)
-		}
+		res := resource.NewWithAttributes(semconv.SchemaURL,
+			semconv.ServiceName(serviceName),
+			semconv.ServiceVersion(version),
+			semconv.ServiceInstanceID(instanceID),
+		)
 		provider := metric.NewMeterProvider(
 			metric.WithReader(metric.NewPeriodicReader(exporter)),
-			metric.WithResource(resource),
+			metric.WithResource(res),
 		)
 		otel.SetMeterProvider(provider)
 
@@ -176,8 +177,10 @@ func main() {
 			))
 		global.SetLoggerProvider(provider)
 		slog.SetDefault(otelslog.NewLogger(serviceName,
-			otelslog.WithSchemaURL(semconv.SchemaURL),
-			otelslog.WithVersion(version),
+			otelslog.WithAttributes(
+				semconv.ServiceVersion(version),
+				semconv.ServiceInstanceID(instanceID),
+			),
 		))
 
 		a.addShutdownFunc(func(ctx context.Context) error {
