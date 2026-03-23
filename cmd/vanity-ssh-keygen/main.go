@@ -54,7 +54,7 @@ type Metadata struct {
 
 type OutputData struct {
 	PublicKey  string   `json:"public_key"`
-	PrivateKey string   `json:"private_key"`
+	PrivateKey string   `json:"private_key"` //nolint:gosec The program is designed to generate private keys.
 	Metadata   Metadata `json:"metadata"`
 }
 
