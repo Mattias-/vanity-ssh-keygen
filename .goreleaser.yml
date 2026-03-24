@@ -32,6 +32,7 @@ kos:
       - "{{.Version}}"
       - latest
     bare: true
+    base_image: gcr.io/distroless/static-debian13:nonroot
     creation_time: "{{.CommitTimestamp}}"
     ko_data_creation_time: "{{.CommitTimestamp}}"
 
