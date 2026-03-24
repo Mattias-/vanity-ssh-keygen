@@ -54,6 +54,7 @@ jobs:
           # Run with metrics to make sure semver version compatibility.
           go run ./cmd/vanity-ssh-keygen --metrics x
           grep -i x x.pub
+          rm x x.pub
 
       - name: Lint
         uses: golangci/golangci-lint-action@v9
