@@ -332,9 +332,10 @@ func (a *app) outputJSON(elapsed time.Duration, result keygen.SSHKey) {
 	slog.Info("Found matching public key", "pubkey", string(pubK))
 	outDir := a.config.OutputDir + "/"
 
+	//nolint:gosec // The program is designed to generate private keys.
 	file, _ := json.MarshalIndent(OutputData{
 		PublicKey:  string(pubK),
-		PrivateKey: string(privK), //nolint:gosec // The program is designed to generate private keys.
+		PrivateKey: string(privK),
 		Metadata: Metadata{
 			FindString: a.config.MatchString,
 			Time:       int64(elapsed / time.Second),
