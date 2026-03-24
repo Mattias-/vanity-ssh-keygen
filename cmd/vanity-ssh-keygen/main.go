@@ -54,7 +54,7 @@ type Metadata struct {
 
 type OutputData struct {
 	PublicKey  string   `json:"public_key"`
-	PrivateKey string   `json:"private_key"` //nolint:gosec The program is designed to generate private keys.
+	PrivateKey string   `json:"private_key"` //nolint:gosec // The program is designed to generate private keys.
 	Metadata   Metadata `json:"metadata"`
 }
 
@@ -334,7 +334,7 @@ func (a *app) outputJSON(elapsed time.Duration, result keygen.SSHKey) {
 
 	file, _ := json.MarshalIndent(OutputData{
 		PublicKey:  string(pubK),
-		PrivateKey: string(privK),
+		PrivateKey: string(privK), //nolint:gosec // The program is designed to generate private keys.
 		Metadata: Metadata{
 			FindString: a.config.MatchString,
 			Time:       int64(elapsed / time.Second),
