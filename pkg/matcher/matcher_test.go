@@ -2,8 +2,10 @@ package matcher
 
 import (
 	"math/rand/v2"
+	"slices"
 	"testing"
 
+	"github.com/Mattias-/vanity-ssh-keygen/pkg/keygen"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/matcher/ignorecase"
 	"github.com/Mattias-/vanity-ssh-keygen/pkg/matcher/ignorecaseed25519"
 )
@@ -20,6 +22,37 @@ func (k testKey) SSHPrivkey() []byte {
 
 func (k testKey) Generate() {
 	panic("not implemented") // TODO: Implement
+}
+
+type mockMatcher struct{}
+
+func (m *mockMatcher) SetMatchString(s string)    {}
+func (m *mockMatcher) Match(k keygen.SSHKey) bool { return false }
+
+func TestRegistry(t *testing.T) {
+	name := "mock"
+	matcher := &mockMatcher{}
+
+	RegisterMatcher(name, matcher)
+
+	names := Names()
+	found := slices.Contains(names, name)
+	if !found {
+		t.Fatalf("Expected %s in names, but not found", name)
+	}
+
+	m, ok := Get(name)
+	if !ok {
+		t.Fatalf("Expected to find matcher %s, but not found", name)
+	}
+	if m == nil {
+		t.Fatal("Matcher is nil")
+	}
+
+	_, ok = Get("non-existent")
+	if ok {
+		t.Fatal("Expected not to find non-existent matcher")
+	}
 }
 
 var letters = []byte("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
