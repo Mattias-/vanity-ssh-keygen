@@ -1,12 +1,12 @@
-.PHONY: all build test lint lint-fix clean check update-readme check-config release-dry-run
+.PHONY: all build test lint lint-fix clean check check-readme smoke-test check-config release-dry-run
 
-all: build test lint
+all: build test smoke-test lint-fix
 
 build:
 	go build -o vanity-ssh-keygen ./cmd/vanity-ssh-keygen
 
 test:
-	go test -v ./...
+	go test ./...
 
 lint:
 	golangci-lint run
@@ -15,8 +15,16 @@ lint-fix:
 	go fix ./...
 	golangci-lint run --fix
 
-update-readme:
+README.md: build update-readme.sh
 	./update-readme.sh
+
+check-readme: README.md
+	git diff --exit-code README.md
+
+smoke-test: build
+	./vanity-ssh-keygen --metrics x
+	grep -i x x.pub
+	rm -f x x.pub
 
 check-config:
 	KO_DOCKER_REPO=ko.local goreleaser check
@@ -28,7 +36,8 @@ clean:
 	rm -f vanity-ssh-keygen
 	rm -f pprof
 	rm -rf dist
+	rm -f x x.pub
 
-check: lint test
+check: lint test check-readme
 	go mod tidy -diff
 	go fix -diff ./...

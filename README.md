@@ -29,4 +29,3 @@ Flags:
                                  set to 0 to disable
 ```
 <!-- vanity-ssh-keygen-usage:end -->
-
