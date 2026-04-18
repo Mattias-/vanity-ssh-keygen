@@ -343,7 +343,7 @@ func (a *app) outputJSON(elapsed time.Duration, result keygen.SSHKey) {
 	outDir := a.config.OutputDir + "/"
 
 	//nolint:gosec // The program is designed to generate private keys.
-	file, _ := json.MarshalIndent(OutputData{
+	file, err := json.MarshalIndent(OutputData{
 		PublicKey:  string(pubK),
 		PrivateKey: string(privK),
 		Metadata: Metadata{
@@ -351,8 +351,14 @@ func (a *app) outputJSON(elapsed time.Duration, result keygen.SSHKey) {
 			Time:       int64(elapsed / time.Second),
 		},
 	}, "", " ")
+	if err != nil {
+		slog.Error("Could not marshal result to JSON", "error", err)
+		return
+	}
 	jsonFileName := outDir + "result.json"
-	_ = os.WriteFile(jsonFileName, file, 0o600)
+	if err := os.WriteFile(jsonFileName, file, 0o600); err != nil {
+		slog.Error("Could not write result JSON file", "error", err)
+	}
 	slog.Info("Result keypair stored", "json_file", jsonFileName)
 }
 
