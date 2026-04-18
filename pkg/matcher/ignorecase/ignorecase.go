@@ -15,10 +15,33 @@ func New() *ignorecaseMatcher {
 }
 
 func (m *ignorecaseMatcher) SetMatchString(matchString string) {
-	m.matchString = matchString
+	m.matchString = strings.ToLower(matchString)
 }
 
 func (m *ignorecaseMatcher) Match(s keygen.SSHKey) bool {
 	pubK := s.SSHPubkey()
-	return strings.Contains(strings.ToLower(string(pubK)), m.matchString)
+	return containsCaseInsensitive(pubK, m.matchString)
+}
+
+func containsCaseInsensitive(b []byte, substr string) bool {
+	if len(substr) == 0 {
+		return true
+	}
+	for i := 0; i <= len(b)-len(substr); i++ {
+		match := true
+		for j := 0; j < len(substr); j++ {
+			c := b[i+j]
+			if c >= 'A' && c <= 'Z' {
+				c += 'a' - 'A'
+			}
+			if c != substr[j] {
+				match = false
+				break
+			}
+		}
+		if match {
+			return true
+		}
+	}
+	return false
 }

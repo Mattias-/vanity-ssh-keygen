@@ -39,3 +39,12 @@ func TestIgnoreCaseEd25519Matcher(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkMatcherMatch(b *testing.B) {
+	m := New()
+	m.SetMatchString("abc")
+	key := &mockSSHKey{pubkey: []byte("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIABCDEFGH")}
+	for i := 0; i < b.N; i++ {
+		_ = m.Match(key)
+	}
+}
