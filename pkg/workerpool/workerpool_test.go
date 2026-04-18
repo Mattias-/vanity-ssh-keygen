@@ -1,6 +1,7 @@
 package workerpool
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -10,7 +11,7 @@ type mockWorker struct {
 	resultChan chan int
 }
 
-func (m *mockWorker) Run() {
+func (m *mockWorker) Run(ctx context.Context) {
 	m.count++
 	if m.resultChan != nil {
 		m.resultChan <- 1
@@ -33,7 +34,7 @@ func TestWorkerPool(t *testing.T) {
 		Results: resChan,
 	}
 
-	wp.Start()
+	wp.Start(context.Background())
 
 	select {
 	case <-resChan:

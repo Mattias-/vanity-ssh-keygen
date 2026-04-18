@@ -10,7 +10,7 @@ import (
 )
 
 type Worker[R any] interface {
-	Run()
+	Run(context.Context)
 	Count() int64
 	SetResultChan(R)
 }
@@ -35,12 +35,12 @@ func (wps WorkerPoolStats) Log() {
 	)
 }
 
-func (wp *WorkerPool[R]) Start() {
+func (wp *WorkerPool[R]) Start(ctx context.Context) {
 	wp.RegisterCounter()
 	wp.start = time.Now()
 	for _, w := range wp.Workers {
 		w.SetResultChan(wp.Results)
-		go w.Run()
+		go w.Run(ctx)
 	}
 }
 

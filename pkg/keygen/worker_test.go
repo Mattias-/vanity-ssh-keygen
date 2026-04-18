@@ -1,6 +1,7 @@
 package keygen
 
 import (
+	"context"
 	"testing"
 )
 
@@ -30,7 +31,7 @@ func TestWorker(t *testing.T) {
 	}
 	w.SetResultChan(results)
 
-	w.Run()
+	w.Run(context.Background())
 
 	res := <-results
 	if res == nil {

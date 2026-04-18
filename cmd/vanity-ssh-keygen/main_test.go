@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -112,7 +113,7 @@ func TestRunKeygen(t *testing.T) {
 		capturedResult = result
 	}
 
-	a.runKeygen(mockM, mockK, outputter)
+	a.runKeygen(context.Background(), mockM, mockK, outputter)
 
 	if capturedResult == nil {
 		t.Fatal("Result not captured")

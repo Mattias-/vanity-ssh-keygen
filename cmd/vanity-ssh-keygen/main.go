@@ -269,20 +269,16 @@ func main() {
 		slog.Error("Invalid output format", "output", a.config.Output)
 	}
 
-	go func() {
-		<-ctx.Done()
-		a.shutdownAll()
-		os.Exit(1)
-	}()
-	a.runKeygen(m, k, outputter)
+	a.runKeygen(ctx, m, k, outputter)
 	a.shutdownAll()
 	os.Exit(0)
 }
 
-func (a *app) runKeygen(matcher matcher.Matcher, kg keygen.Keygen, outputter resultSink) {
+func (a *app) runKeygen(ctx context.Context, matcher matcher.Matcher, kg keygen.Keygen, outputter resultSink) {
+	results := make(chan keygen.SSHKey)
 	wp := workerpool.WorkerPool[chan keygen.SSHKey]{
 		Workers: make([]workerpool.Worker[chan keygen.SSHKey], 0, a.config.Threads),
-		Results: make(chan keygen.SSHKey),
+		Results: results,
 	}
 	for range a.config.Threads {
 		wp.Workers = append(wp.Workers, &keygen.Worker{
@@ -293,20 +289,30 @@ func (a *app) runKeygen(matcher matcher.Matcher, kg keygen.Keygen, outputter res
 
 	if a.config.StatsLogInterval != 0 {
 		ticker := time.NewTicker(a.config.StatsLogInterval)
-		defer ticker.Stop()
 		go func() {
-			for range ticker.C {
-				wp.GetStats().Log()
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					wp.GetStats().Log()
+				case <-ctx.Done():
+					return
+				}
 			}
 		}()
 	}
 
-	wp.Start()
-	result := <-wp.Results
-	wps := wp.GetStats()
-	wps.Log()
+	wp.Start(ctx)
 
-	outputter(wps.Elapsed, result)
+	var result keygen.SSHKey
+	select {
+	case result = <-results:
+		wps := wp.GetStats()
+		wps.Log()
+		outputter(wps.Elapsed, result)
+	case <-ctx.Done():
+		slog.Info("Cancellation received, exiting...")
+	}
 }
 
 func (a *app) outputPEM(elapsed time.Duration, result keygen.SSHKey) {
@@ -317,8 +323,12 @@ func (a *app) outputPEM(elapsed time.Duration, result keygen.SSHKey) {
 
 	privkeyFileName := outDir + a.config.MatchString
 	pubkeyFileName := outDir + a.config.MatchString + ".pub"
-	_ = os.WriteFile(privkeyFileName, privK, 0o600)
-	_ = os.WriteFile(pubkeyFileName, pubK, 0o600)
+	if err := os.WriteFile(privkeyFileName, privK, 0o600); err != nil {
+		slog.Error("Could not write private key file", "error", err)
+	}
+	if err := os.WriteFile(pubkeyFileName, pubK, 0o600); err != nil {
+		slog.Error("Could not write public key file", "error", err)
+	}
 	slog.Info("Result keypair stored",
 		"privkey_file", privkeyFileName,
 		"pubkey_file", pubkeyFileName,
