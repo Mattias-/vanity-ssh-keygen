@@ -30,3 +30,18 @@ func TestEd25519(t *testing.T) {
 		t.Errorf("Failed to parse private key: %v", err)
 	}
 }
+
+func BenchmarkSSHPubkey(b *testing.B) {
+	e := New()
+	e.Generate()
+	for i := 0; i < b.N; i++ {
+		_ = e.SSHPubkey()
+	}
+}
+
+func BenchmarkGenerate(b *testing.B) {
+	e := New()
+	for i := 0; i < b.N; i++ {
+		e.Generate()
+	}
+}
