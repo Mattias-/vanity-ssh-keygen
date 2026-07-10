@@ -5,7 +5,7 @@ go 1.26.1
 require (
 	github.com/alecthomas/kong v1.15.0
 	github.com/google/uuid v1.6.0
-	github.com/grafana/pyroscope-go v1.4.0
+	github.com/grafana/pyroscope-go v1.4.1
 	go.opentelemetry.io/contrib/bridges/otelslog v0.19.0
 	go.opentelemetry.io/otel v1.44.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.20.0
