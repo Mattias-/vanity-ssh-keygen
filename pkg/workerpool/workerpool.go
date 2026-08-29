@@ -29,7 +29,7 @@ type WorkerPoolStats struct {
 
 func (wps WorkerPoolStats) Log() {
 	slog.Info("Tested keys",
-		slog.Duration("time", wps.Elapsed),
+		slog.Duration("time", wps.Elapsed.Truncate(time.Millisecond)),
 		slog.Int64("tested", wps.Count),
 		slog.Float64("kKeys/s", float64(wps.Count)/wps.Elapsed.Seconds()/1000),
 	)
