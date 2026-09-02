@@ -3,6 +3,7 @@ package workerpool
 import (
 	"context"
 	"log/slog"
+	"math"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -31,7 +32,8 @@ func (wps WorkerPoolStats) Log() {
 	slog.Info("Tested keys",
 		slog.Duration("time", wps.Elapsed.Truncate(time.Millisecond)),
 		slog.Int64("tested", wps.Count),
-		slog.Float64("kKeys/s", float64(wps.Count)/wps.Elapsed.Seconds()/1000),
+		// kKeys/s, rounded to 3 decimals
+		slog.Float64("kKeys/s", math.Round(float64(wps.Count)/wps.Elapsed.Seconds())/1000),
 	)
 }
 
