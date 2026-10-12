@@ -23,7 +23,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
-	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -175,7 +174,7 @@ func main() {
 			log.WithProcessor(
 				log.NewBatchProcessor(exporter),
 			))
-		global.SetLoggerProvider(provider)
+		otel.SetLoggerProvider(provider)
 		slog.SetDefault(otelslog.NewLogger(serviceName,
 			otelslog.WithAttributes(
 				semconv.ServiceVersion(version),
