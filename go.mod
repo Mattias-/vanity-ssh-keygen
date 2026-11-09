@@ -3,7 +3,7 @@ module github.com/Mattias-/vanity-ssh-keygen
 go 1.27
 
 require (
-	github.com/alecthomas/kong v1.16.1
+	github.com/alecthomas/kong v1.17.0
 	github.com/google/uuid v1.6.0
 	github.com/grafana/pyroscope-go v1.4.3
 	go.opentelemetry.io/contrib/bridges/otelslog v0.21.0
